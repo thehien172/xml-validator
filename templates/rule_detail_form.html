@@ -7,19 +7,35 @@
 
 <div class="form-box">
     <form method="GET" action="">
-        <label>Chọn XML trước để lọc field</label>
-        <select name="xml_id" onchange="this.form.submit()">
-            <option value="">-- Chọn XML --</option>
-            {% for x in xmls %}
-                <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int == x.id %}selected{% endif %}>
-                    {{ x.ma_xml }} - {{ x.ten_xml }}
-                </option>
-            {% endfor %}
-        </select>
+        <div class="row">
+            <div class="col">
+                <label>XML nguồn</label>
+                <select name="xml_id" onchange="this.form.submit()">
+                    <option value="">-- Chọn XML --</option>
+                    {% for x in xmls %}
+                        <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int == x.id %}selected{% endif %}>
+                            {{ x.ma_xml }} - {{ x.ten_xml }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col">
+                <label>XML so sánh</label>
+                <select name="compare_xml_id" onchange="this.form.submit()">
+                    <option value="">-- Chọn XML so sánh --</option>
+                    {% for x in xmls %}
+                        <option value="{{ x.id }}" {% if compare_xml_id and compare_xml_id|int == x.id %}selected{% endif %}>
+                            {{ x.ma_xml }} - {{ x.ten_xml }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
     </form>
 
     <form method="POST">
         <input type="hidden" name="xml_id" value="{{ selected_xml_id }}">
+        <input type="hidden" name="compare_xml_id" value="{{ compare_xml_id }}">
 
         <label>Role</label>
         <select name="condition_role" required>
@@ -27,7 +43,7 @@
             <option value="VALIDATE" {% if not item or item.condition_role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
         </select>
 
-        <label>Field</label>
+        <label>Field nguồn</label>
         <select name="field_id" required>
             <option value="">-- Chọn field --</option>
             {% for f in fields %}
@@ -46,8 +62,24 @@
             {% endfor %}
         </select>
 
+        <label>Kiểu so sánh</label>
+        <select name="compare_mode">
+            <option value="VALUE" {% if not item or item.compare_mode == 'VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
+            <option value="FIELD" {% if item and item.compare_mode == 'FIELD' %}selected{% endif %}>So sánh với field khác</option>
+        </select>
+
         <label>Giá trị so sánh</label>
-        <input type="text" name="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12">
+        <input type="text" name="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12 hoặc 123,456,789">
+
+        <label>Field so sánh</label>
+        <select name="compare_field_id">
+            <option value="">-- Chọn field so sánh --</option>
+            {% for f in compare_fields %}
+                <option value="{{ f.id }}" {% if item and item.compare_field_id == f.id %}selected{% endif %}>
+                    {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
+                </option>
+            {% endfor %}
+        </select>
 
         <label>Thứ tự</label>
         <input type="text" name="sort_order" value="{{ item.sort_order if item else '1' }}">

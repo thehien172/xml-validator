@@ -37,13 +37,18 @@ class RuleDetail(db.Model):
     rule_id = db.Column(db.Integer, db.ForeignKey("rule.id"), nullable=False)
     field_id = db.Column(db.Integer, db.ForeignKey("danh_muc_truong_du_lieu.id"), nullable=False)
     condition_id = db.Column(db.Integer, db.ForeignKey("danh_muc_dieu_kien.id"), nullable=False)
+
     gia_tri = db.Column(db.String(255), nullable=True)
-    condition_role = db.Column(db.String(50), nullable=False)  # TRIGGER / VALIDATE
+    condition_role = db.Column(db.String(50), nullable=False)
     sort_order = db.Column(db.Integer, nullable=False, default=1)
 
+    compare_mode = db.Column(db.String(20), nullable=False, default="VALUE")
+    compare_field_id = db.Column(db.Integer, db.ForeignKey("danh_muc_truong_du_lieu.id"), nullable=True)
+
     rule = db.relationship("Rule", backref="details")
-    field = db.relationship("DanhMucTruongDuLieu")
+    field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[field_id])
     condition = db.relationship("DanhMucDieuKien")
+    compare_field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[compare_field_id])
 
     def __repr__(self):
         return f"<RuleDetail rule_id={self.rule_id} field_id={self.field_id}>"

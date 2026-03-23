@@ -11,16 +11,17 @@
         <div class="row">
             <div class="col">
                 <label>Tìm kiếm</label>
-                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Tên field, path, điều kiện, giá trị...">
+                <input type="text" name="keyword" value="{{ keyword }}"
+                    placeholder="Tên field, path, điều kiện, giá trị...">
             </div>
             <div class="col">
                 <label>XML</label>
                 <select name="xml_id">
                     <option value="">-- Tất cả --</option>
                     {% for x in xmls %}
-                        <option value="{{ x.id }}" {% if xml_id and xml_id|int == x.id %}selected{% endif %}>
-                            {{ x.ma_xml }} - {{ x.ten_xml }}
-                        </option>
+                    <option value="{{ x.id }}" {% if xml_id and xml_id|int==x.id %}selected{% endif %}>
+                        {{ x.ma_xml }} - {{ x.ten_xml }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -28,8 +29,8 @@
                 <label>Role</label>
                 <select name="role">
                     <option value="">-- Tất cả --</option>
-                    <option value="TRIGGER" {% if role == 'TRIGGER' %}selected{% endif %}>TRIGGER</option>
-                    <option value="VALIDATE" {% if role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
+                    <option value="TRIGGER" {% if role=='TRIGGER' %}selected{% endif %}>TRIGGER</option>
+                    <option value="VALIDATE" {% if role=='VALIDATE' %}selected{% endif %}>VALIDATE</option>
                 </select>
             </div>
         </div>
@@ -50,6 +51,8 @@
             <th>XML</th>
             <th>Field</th>
             <th>Path</th>
+            <th>Kiểu so sánh</th>
+            <th>So sánh với</th>
             <th>Condition</th>
             <th>Giá trị</th>
             <th>Thao tác</th>
@@ -64,11 +67,20 @@
             <td>{{ d.field.xml.ma_xml }}</td>
             <td>{{ d.field.ten_truong }}</td>
             <td>{{ d.field.xml_path }}</td>
+            <td>{{ d.compare_mode }}</td>
+            <td>
+                {% if d.compare_mode == 'FIELD' and d.compare_field %}
+                {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
+                {% else %}
+                {{ d.gia_tri or '' }}
+                {% endif %}
+            </td>
             <td>{{ d.condition.ma_dieu_kien }} - {{ d.condition.ten_dieu_kien }}</td>
             <td>{{ d.gia_tri or '' }}</td>
             <td class="actions">
                 <a class="btn" href="/rules/details/{{ d.id }}/edit">Sửa</a>
-                <form class="inline" method="POST" action="/rules/details/{{ d.id }}/delete" onsubmit="return confirm('Xóa detail này?');">
+                <form class="inline" method="POST" action="/rules/details/{{ d.id }}/delete"
+                    onsubmit="return confirm('Xóa detail này?');">
                     <button class="btn btn-danger" type="submit">Xóa</button>
                 </form>
             </td>

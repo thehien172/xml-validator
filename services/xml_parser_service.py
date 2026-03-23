@@ -14,7 +14,6 @@ def get_hoso_nodes(tree):
     """
     return tree.xpath(".//HOSO")
 
-
 def build_xml_data_map_for_hoso(hoso_node, xml_configs):
     """
     Trong 1 HOSO, map các FILEHOSO theo LOAIHOSO.
@@ -53,6 +52,19 @@ def build_xml_data_map_for_hoso(hoso_node, xml_configs):
             continue
 
         items = noidungfile.xpath(xml_config.list_path)
+        if not items:
+            list_path = (xml_config.list_path or "").strip()
+
+            # bỏ ./ ở đầu nếu có
+            normalized_path = list_path[2:] if list_path.startswith("./") else list_path
+
+            # lấy tag cuối cùng của path
+            fallback_tag = normalized_path.split("/")[-1] if normalized_path else "EMPTY_ITEM"
+
+            # tạo node rỗng giả
+            empty_item = etree.Element(fallback_tag)
+            items = [empty_item]
+
         result[loaihoso]["items"] = items
 
     return result

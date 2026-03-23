@@ -109,8 +109,12 @@ def list_rule_details(rule_id):
     xml_id = (request.args.get("xml_id") or "").strip()
     role = (request.args.get("role") or "").strip()
 
-    query = RuleDetail.query.join(DanhMucTruongDuLieu).join(DanhMucXml).join(DanhMucDieuKien).filter(
-        RuleDetail.rule_id == rule_id
+    query = (
+        RuleDetail.query
+        .join(DanhMucTruongDuLieu, RuleDetail.field_id == DanhMucTruongDuLieu.id)
+        .join(DanhMucXml, DanhMucTruongDuLieu.xml_id == DanhMucXml.id)
+        .join(DanhMucDieuKien, RuleDetail.condition_id == DanhMucDieuKien.id)
+        .filter(RuleDetail.rule_id == rule_id)
     )
 
     if keyword:
@@ -151,19 +155,34 @@ def create_rule_detail(rule_id):
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
 
     selected_xml_id = request.args.get("xml_id") or request.form.get("xml_id") or ""
+    compare_xml_id = request.args.get("compare_xml_id") or request.form.get("compare_xml_id") or ""
+
     fields = []
+    compare_fields = []
+
     if selected_xml_id:
         fields = DanhMucTruongDuLieu.query.filter_by(xml_id=int(selected_xml_id)).order_by(DanhMucTruongDuLieu.id.asc()).all()
 
+    if compare_xml_id:
+        compare_fields = DanhMucTruongDuLieu.query.filter_by(xml_id=int(compare_xml_id)).order_by(DanhMucTruongDuLieu.id.asc()).all()
+
     if request.method == "POST":
+        compare_mode = request.form.get("compare_mode", "VALUE").strip()
+
         detail = RuleDetail(
             rule_id=rule.id,
             field_id=int(request.form.get("field_id")),
             condition_id=int(request.form.get("condition_id")),
             gia_tri=(request.form.get("gia_tri") or "").strip() or None,
             condition_role=request.form.get("condition_role", "VALIDATE").strip(),
-            sort_order=int(request.form.get("sort_order") or 1)
+            sort_order=int(request.form.get("sort_order") or 1),
+            compare_mode=compare_mode,
+            compare_field_id=int(request.form.get("compare_field_id")) if compare_mode == "FIELD" and request.form.get("compare_field_id") else None
         )
+
+        if compare_mode == "FIELD":
+            detail.gia_tri = None
+
         db.session.add(detail)
         db.session.commit()
         return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
@@ -174,8 +193,10 @@ def create_rule_detail(rule_id):
         item=None,
         xmls=xmls,
         fields=fields,
+        compare_fields=compare_fields,
         conditions=conditions,
-        selected_xml_id=selected_xml_id
+        selected_xml_id=selected_xml_id,
+        compare_xml_id=compare_xml_id
     )
 
 
@@ -187,16 +208,31 @@ def edit_rule_detail(detail_id):
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
 
     selected_xml_id = request.args.get("xml_id") or request.form.get("xml_id") or str(item.field.xml_id)
+    compare_xml_id = request.args.get("compare_xml_id") or request.form.get("compare_xml_id") or (str(item.compare_field.xml_id) if item.compare_field else "")
+
     fields = []
+    compare_fields = []
+
     if selected_xml_id:
         fields = DanhMucTruongDuLieu.query.filter_by(xml_id=int(selected_xml_id)).order_by(DanhMucTruongDuLieu.id.asc()).all()
 
+    if compare_xml_id:
+        compare_fields = DanhMucTruongDuLieu.query.filter_by(xml_id=int(compare_xml_id)).order_by(DanhMucTruongDuLieu.id.asc()).all()
+
     if request.method == "POST":
+        compare_mode = request.form.get("compare_mode", "VALUE").strip()
+
         item.field_id = int(request.form.get("field_id"))
         item.condition_id = int(request.form.get("condition_id"))
         item.gia_tri = (request.form.get("gia_tri") or "").strip() or None
         item.condition_role = request.form.get("condition_role", "VALIDATE").strip()
         item.sort_order = int(request.form.get("sort_order") or 1)
+        item.compare_mode = compare_mode
+        item.compare_field_id = int(request.form.get("compare_field_id")) if compare_mode == "FIELD" and request.form.get("compare_field_id") else None
+
+        if compare_mode == "FIELD":
+            item.gia_tri = None
+
         db.session.commit()
         return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
 
@@ -206,8 +242,10 @@ def edit_rule_detail(detail_id):
         item=item,
         xmls=xmls,
         fields=fields,
+        compare_fields=compare_fields,
         conditions=conditions,
-        selected_xml_id=selected_xml_id
+        selected_xml_id=selected_xml_id,
+        compare_xml_id=compare_xml_id
     )
 
 

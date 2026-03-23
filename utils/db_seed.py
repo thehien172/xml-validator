@@ -1,3 +1,6 @@
+import os
+from lxml import etree
+
 from models import (
     db,
     DanhMucXml,
@@ -11,165 +14,309 @@ from models import (
 )
 
 
-def seed_data():
-    # Seed hệ thống
-    if not HeThong.query.first():
-        l2 = HeThong(ten_he_thong="L2")
-        l3 = HeThong(ten_he_thong="L3")
-        db.session.add_all([l2, l3])
-        db.session.commit()
-    else:
-        l2 = HeThong.query.filter_by(ten_he_thong="L2").first()
-        l3 = HeThong.query.filter_by(ten_he_thong="L3").first()
+SAMPLE_XML_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "sample_seed_3176.xml"
+)
 
-    # Seed đơn vị
-    if not DonVi.query.first():
-        don_vis = [
-            DonVi(ma_don_vi="62058", ten_don_vi="BV YHCT - CS1", he_thong_id=l2.id),
-            DonVi(ma_don_vi="62134", ten_don_vi="BV YHCT - CS2", he_thong_id=l2.id),
-            DonVi(ma_don_vi="62126", ten_don_vi="Bệnh xá 24", he_thong_id=l2.id),
-        ]
-        db.session.add_all(don_vis)
-        db.session.commit()
 
-    # Seed XML
-    if not DanhMucXml.query.first():
-        xml1 = DanhMucXml(
-            ma_xml="XML1",
-            ten_xml="XML1 - Thông tin tổng hợp",
-            list_path="./TONG_HOP"
-        )
+XML_CONFIGS = [
+    ("XML1", "XML1 - Thông tin tổng hợp", "./TONG_HOP"),
+    ("XML2", "XML2 - Chi tiết thuốc", "./CHITIEU_CHITIET_THUOC/DSACH_CHI_TIET_THUOC/CHI_TIET_THUOC"),
+    ("XML3", "XML3 - Chi tiết DVKT", "./CHITIEU_CHITIET_DVKT_VTYT/DSACH_CHI_TIET_DVKT/CHI_TIET_DVKT"),
+    ("XML4", "XML4 - Cận lâm sàng", "./CHITIEU_CHITIET_DICHVUCANLAMSANG/DSACH_CHI_TIET_CLS/CHI_TIET_CLS"),
+    ("XML5", "XML5 - Diễn biến lâm sàng", "./CHITIEU_CHITIET_DIENBIENLAMSANG/DSACH_CHI_TIET_DIEN_BIEN_BENH/CHI_TIET_DIEN_BIEN_BENH"),
+    ("XML6", "XML6 - HIV/AIDS", "./CHI_TIEU_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS/DSACH_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS"),
+    ("XML7", "XML7 - Giấy ra viện", "./CHI_TIEU_DU_LIEU_GIAY_RA_VIEN"),
+    ("XML8", "XML8 - Tóm tắt hồ sơ bệnh án", "./CHI_TIEU_DU_LIEU_TOM_TAT_HO_SO_BENH_AN"),
+    # ("XML10", "XML10", "./"),
+    # ("XML11", "XML11", "./"),
+    # ("XML13", "XML13", "./"),
+    # ("XML14", "XML14", "./"),
+    ("XML15", "XML15 - Điều trị bệnh lao", "./CHI_TIEU_DIEUTRI_BENHLAO/DSACH_CHITIET_DIEUTRI_BENHLAO"),
+]
 
-        xml2 = DanhMucXml(
-            ma_xml="XML2",
-            ten_xml="XML2 - Chi tiết thuốc",
-            list_path="./CHITIEU_CHITIET_THUOC/DSACH_CHI_TIET_THUOC/CHI_TIET_THUOC"
-        )
 
-        xml3 = DanhMucXml(
-            ma_xml="XML3",
-            ten_xml="XML3 - Chi tiết DVKT",
-            list_path="./CHITIEU_CHITIET_DVKT_VTYT/DSACH_CHI_TIET_DVKT/CHI_TIET_DVKT"
-        )
+def add_condition_if_not_exists(ma, ten):
+    existing = DanhMucDieuKien.query.filter_by(ma_dieu_kien=ma).first()
+    if not existing:
+        db.session.add(DanhMucDieuKien(ma_dieu_kien=ma, ten_dieu_kien=ten))
 
-        db.session.add_all([xml1, xml2, xml3])
-        db.session.commit()
-    else:
-        xml1 = DanhMucXml.query.filter_by(ma_xml="XML1").first()
-        xml3 = DanhMucXml.query.filter_by(ma_xml="XML3").first()
 
-    # Seed field
-    if not DanhMucTruongDuLieu.query.first():
-        field_ho_ten = DanhMucTruongDuLieu(
-            ten_truong="Họ tên",
-            xml_id=xml1.id,
-            xml_path="./HO_TEN",
-            data_type="STRING"
-        )
+def seed_systems_and_units():
+    if not HeThong.query.filter_by(ten_he_thong="L2").first():
+        db.session.add(HeThong(ten_he_thong="L2"))
+    if not HeThong.query.filter_by(ten_he_thong="L3").first():
+        db.session.add(HeThong(ten_he_thong="L3"))
+    db.session.commit()
 
-        field_ma_nhom = DanhMucTruongDuLieu(
-            ten_truong="Mã nhóm",
-            xml_id=xml3.id,
-            xml_path="./MA_NHOM",
-            data_type="STRING"
-        )
+    l2 = HeThong.query.filter_by(ten_he_thong="L2").first()
 
-        field_ma_bac_si = DanhMucTruongDuLieu(
-            ten_truong="Mã bác sĩ",
-            xml_id=xml3.id,
-            xml_path="./MA_BAC_SI",
-            data_type="STRING"
-        )
+    units = [
+        ("62058", "BV YHCT - CS1", l2.id),
+        ("62134", "BV YHCT - CS2", l2.id),
+        ("62126", "Bệnh xá 24", l2.id),
+    ]
 
-        db.session.add_all([field_ho_ten, field_ma_nhom, field_ma_bac_si])
-        db.session.commit()
-    else:
-        field_ho_ten = DanhMucTruongDuLieu.query.filter_by(ten_truong="Họ tên").first()
-        field_ma_nhom = DanhMucTruongDuLieu.query.filter_by(ten_truong="Mã nhóm").first()
-        field_ma_bac_si = DanhMucTruongDuLieu.query.filter_by(ten_truong="Mã bác sĩ").first()
+    for ma_don_vi, ten_don_vi, he_thong_id in units:
+        if not DonVi.query.filter_by(ma_don_vi=ma_don_vi).first():
+            db.session.add(DonVi(
+                ma_don_vi=ma_don_vi,
+                ten_don_vi=ten_don_vi,
+                he_thong_id=he_thong_id
+            ))
+    db.session.commit()
 
-    # Seed điều kiện
-    if not DanhMucDieuKien.query.first():
-        conditions = [
-            DanhMucDieuKien(ma_dieu_kien="IS_NULL", ten_dieu_kien="Trống"),
-            DanhMucDieuKien(ma_dieu_kien="NOT_NULL", ten_dieu_kien="Không trống"),
-            DanhMucDieuKien(ma_dieu_kien="EQUAL", ten_dieu_kien="Bằng"),
-            DanhMucDieuKien(ma_dieu_kien="NOT_EQUAL", ten_dieu_kien="Khác"),
-            DanhMucDieuKien(ma_dieu_kien="CONTAINS", ten_dieu_kien="Chứa"),
-            DanhMucDieuKien(ma_dieu_kien="IN_LIST", ten_dieu_kien="Nằm trong danh sách")
-        ]
-        db.session.add_all(conditions)
-        db.session.commit()
 
-    # Seed bộ rule
-    if not BoRule.query.first():
-        bo_rule_4750 = BoRule(
+def seed_xml_configs():
+    for ma_xml, ten_xml, list_path in XML_CONFIGS:
+        existing = DanhMucXml.query.filter_by(ma_xml=ma_xml).first()
+        if not existing:
+            db.session.add(DanhMucXml(
+                ma_xml=ma_xml,
+                ten_xml=ten_xml,
+                list_path=list_path
+            ))
+    db.session.commit()
+
+
+def parse_sample_xml():
+    if not os.path.exists(SAMPLE_XML_PATH):
+        return None
+
+    parser = etree.XMLParser(remove_blank_text=True, recover=True, encoding="utf-8")
+    return etree.parse(SAMPLE_XML_PATH, parser)
+
+
+def get_first_hoso(tree):
+    if tree is None:
+        return None
+    hosos = tree.xpath(".//HOSO")
+    return hosos[0] if hosos else None
+
+
+def get_noidungfile_by_xml(hoso_node, ma_xml):
+    if hoso_node is None:
+        return None
+
+    filehoso = hoso_node.xpath(f'./FILEHOSO[LOAIHOSO="{ma_xml}"]')
+    if not filehoso:
+        return None
+
+    return filehoso[0].find("./NOIDUNGFILE")
+
+
+def collect_leaf_paths(elem, prefix=""):
+    if elem is None:
+        return []
+
+    current_path = f"{prefix}/{elem.tag}" if prefix else elem.tag
+    children = [c for c in elem if isinstance(c.tag, str)]
+
+    if not children:
+        return [current_path]
+
+    result = []
+    for child in children:
+        result.extend(collect_leaf_paths(child, current_path))
+    return result
+
+
+def deduplicate_keep_order(items):
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
+def infer_data_type(field_name):
+    upper_name = field_name.upper()
+
+    if upper_name.startswith("NGAY_") or upper_name.endswith("_NGAY"):
+        return "DATE"
+
+    number_prefixes = (
+        "T_", "TYLE_", "SO_", "DON_GIA", "THANH_TIEN", "MUC_HUONG",
+        "CAN_NANG", "STT"
+    )
+    if upper_name.startswith(number_prefixes):
+        return "NUMBER"
+
+    return "STRING"
+
+
+def seed_fields_from_sample():
+    tree = parse_sample_xml()
+    hoso_node = get_first_hoso(tree)
+    if hoso_node is None:
+        return
+
+    xmls = DanhMucXml.query.all()
+    xml_map = {x.ma_xml: x for x in xmls}
+
+    for ma_xml, _, list_path in XML_CONFIGS:
+        xml_row = xml_map.get(ma_xml)
+        if not xml_row:
+            continue
+
+        noidungfile = get_noidungfile_by_xml(hoso_node, ma_xml)
+        if noidungfile is None:
+            continue
+
+        leaf_paths = collect_leaf_paths(noidungfile)
+        leaf_paths = [p.replace("NOIDUNGFILE/", "") for p in leaf_paths]
+        leaf_paths = deduplicate_keep_order(leaf_paths)
+
+        # chỉ seed những field nằm đúng dưới list_path hoặc chính path đơn item
+        for full_path in leaf_paths:
+            if ma_xml in ("XML10", "XML11", "XML13", "XML14"):
+                continue
+
+            # Nếu list_path là "./TONG_HOP" thì field path sẽ là "./HO_TEN"
+            base = list_path.replace("./", "")
+            if full_path == base:
+                continue
+
+            if base == "":
+                continue
+
+            if full_path.startswith(base + "/"):
+                relative_path = "./" + full_path[len(base) + 1:]
+            elif full_path == base:
+                continue
+            else:
+                # XML có thể là node đơn, ví dụ XML7, XML8
+                if "/" not in full_path:
+                    continue
+                root_node = full_path.split("/")[0]
+                if base == root_node:
+                    relative_path = "./" + "/".join(full_path.split("/")[1:])
+                else:
+                    continue
+
+            if relative_path == "./":
+                continue
+
+            field_name = relative_path.replace("./", "").split("/")[-1]
+            existing = DanhMucTruongDuLieu.query.filter_by(
+                xml_id=xml_row.id,
+                xml_path=relative_path
+            ).first()
+
+            if not existing:
+                db.session.add(DanhMucTruongDuLieu(
+                    ten_truong=field_name,
+                    xml_id=xml_row.id,
+                    xml_path=relative_path,
+                    data_type=infer_data_type(field_name)
+                ))
+
+    db.session.commit()
+
+
+def seed_conditions():
+    add_condition_if_not_exists("IS_NULL", "Trống")
+    add_condition_if_not_exists("NOT_NULL", "Không trống")
+    add_condition_if_not_exists("EQUAL", "Bằng")
+    add_condition_if_not_exists("NOT_EQUAL", "Khác")
+    add_condition_if_not_exists("CONTAINS", "Chứa")
+    add_condition_if_not_exists("IN_LIST", "Nằm trong danh sách")
+    db.session.commit()
+
+
+def seed_rule_sets():
+    if not BoRule.query.filter_by(ma_bo_rule="4750").first():
+        db.session.add(BoRule(
             ma_bo_rule="4750",
             ten_bo_rule="Bộ rule theo Quyết định 4750",
             mo_ta="Các rule kiểm tra theo chuẩn QĐ 4750",
             is_active=True
-        )
+        ))
 
-        bo_rule_3176 = BoRule(
+    if not BoRule.query.filter_by(ma_bo_rule="3176").first():
+        db.session.add(BoRule(
             ma_bo_rule="3176",
             ten_bo_rule="Bộ rule theo chuẩn 3176",
             mo_ta="Các rule kiểm tra theo chuẩn 3176",
             is_active=True
+        ))
+
+    db.session.commit()
+
+
+def seed_sample_rules():
+    if Rule.query.first():
+        return
+
+    bo_rule_4750 = BoRule.query.filter_by(ma_bo_rule="4750").first()
+    cond_not_null = DanhMucDieuKien.query.filter_by(ma_dieu_kien="NOT_NULL").first()
+    cond_equal = DanhMucDieuKien.query.filter_by(ma_dieu_kien="EQUAL").first()
+
+    xml1 = DanhMucXml.query.filter_by(ma_xml="XML1").first()
+    xml3 = DanhMucXml.query.filter_by(ma_xml="XML3").first()
+
+    field_ho_ten = DanhMucTruongDuLieu.query.filter_by(xml_id=xml1.id, xml_path="./HO_TEN").first()
+    field_ma_nhom = DanhMucTruongDuLieu.query.filter_by(xml_id=xml3.id, xml_path="./MA_NHOM").first()
+    field_ma_bac_si = DanhMucTruongDuLieu.query.filter_by(xml_id=xml3.id, xml_path="./MA_BAC_SI").first()
+
+    rule_1 = Rule(
+        bo_rule_id=bo_rule_4750.id,
+        ten_rule="Check họ và tên",
+        thong_bao="Thiếu họ và tên",
+        severity="WARNING",
+        is_active=True
+    )
+
+    rule_2 = Rule(
+        bo_rule_id=bo_rule_4750.id,
+        ten_rule="Check mã bác sĩ",
+        thong_bao="Thiếu mã bác sĩ",
+        severity="WARNING",
+        is_active=True
+    )
+
+    db.session.add_all([rule_1, rule_2])
+    db.session.commit()
+
+    db.session.add_all([
+        RuleDetail(
+            rule_id=rule_1.id,
+            field_id=field_ho_ten.id,
+            condition_id=cond_not_null.id,
+            gia_tri=None,
+            condition_role="VALIDATE",
+            sort_order=1,
+            compare_mode="VALUE"
+        ),
+        RuleDetail(
+            rule_id=rule_2.id,
+            field_id=field_ma_nhom.id,
+            condition_id=cond_equal.id,
+            gia_tri="12",
+            condition_role="TRIGGER",
+            sort_order=1,
+            compare_mode="VALUE"
+        ),
+        RuleDetail(
+            rule_id=rule_2.id,
+            field_id=field_ma_bac_si.id,
+            condition_id=cond_not_null.id,
+            gia_tri=None,
+            condition_role="VALIDATE",
+            sort_order=2,
+            compare_mode="VALUE"
         )
+    ])
+    db.session.commit()
 
-        db.session.add_all([bo_rule_4750, bo_rule_3176])
-        db.session.commit()
-    else:
-        bo_rule_4750 = BoRule.query.filter_by(ma_bo_rule="4750").first()
 
-    # Seed rule
-    if not Rule.query.first():
-        cond_not_null = DanhMucDieuKien.query.filter_by(ma_dieu_kien="NOT_NULL").first()
-        cond_equal = DanhMucDieuKien.query.filter_by(ma_dieu_kien="EQUAL").first()
-
-        rule_1 = Rule(
-            bo_rule_id=bo_rule_4750.id,
-            ten_rule="Check họ và tên",
-            thong_bao="Thiếu họ và tên",
-            severity="WARNING",
-            is_active=True
-        )
-
-        rule_2 = Rule(
-            bo_rule_id=bo_rule_4750.id,
-            ten_rule="Check mã bác sĩ",
-            thong_bao="Thiếu mã bác sĩ",
-            severity="WARNING",
-            is_active=True
-        )
-
-        db.session.add_all([rule_1, rule_2])
-        db.session.commit()
-
-        db.session.add_all([
-            RuleDetail(
-                rule_id=rule_1.id,
-                field_id=field_ho_ten.id,
-                condition_id=cond_not_null.id,
-                gia_tri=None,
-                condition_role="VALIDATE",
-                sort_order=1
-            ),
-            RuleDetail(
-                rule_id=rule_2.id,
-                field_id=field_ma_nhom.id,
-                condition_id=cond_equal.id,
-                gia_tri="12",
-                condition_role="TRIGGER",
-                sort_order=1
-            ),
-            RuleDetail(
-                rule_id=rule_2.id,
-                field_id=field_ma_bac_si.id,
-                condition_id=cond_not_null.id,
-                gia_tri=None,
-                condition_role="VALIDATE",
-                sort_order=2
-            )
-        ])
-        db.session.commit()
+def seed_data():
+    seed_systems_and_units()
+    seed_xml_configs()
+    seed_fields_from_sample()
+    seed_conditions()
+    seed_rule_sets()
+    # seed_sample_rules()
