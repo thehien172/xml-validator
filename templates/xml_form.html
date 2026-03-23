@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa XML{% else %}Thêm XML{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa XML{% else %}Thêm XML{% endif %}</h1>
+
+<div class="form-box">
+    <form method="POST">
+        <label>Mã XML</label>
+        <input type="text" name="ma_xml" required value="{{ item.ma_xml if item else '' }}" placeholder="XML1">
+
+        <label>Tên XML</label>
+        <input type="text" name="ten_xml" required value="{{ item.ten_xml if item else '' }}">
+
+        <label>List path</label>
+        <input type="text" name="list_path" required value="{{ item.list_path if item else '' }}" placeholder="./TONG_HOP">
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/xmls" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}

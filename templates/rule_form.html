@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa rule{% else %}Thêm rule{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa rule{% else %}Thêm rule{% endif %}</h1>
+
+<div class="form-box">
+    <form method="POST">
+        <label>Bộ rule</label>
+        <select name="bo_rule_id" required>
+            {% for b in bo_rules %}
+                <option value="{{ b.id }}" {% if item and item.bo_rule_id == b.id %}selected{% endif %}>
+                    {{ b.ma_bo_rule }} - {{ b.ten_bo_rule }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Tên rule</label>
+        <input type="text" name="ten_rule" required value="{{ item.ten_rule if item else '' }}">
+
+        <label>Thông báo</label>
+        <textarea name="thong_bao" required>{{ item.thong_bao if item else '' }}</textarea>
+
+        <label>Severity</label>
+        <select name="severity">
+            <option value="WARNING" {% if item and item.severity == 'WARNING' %}selected{% endif %}>WARNING</option>
+            <option value="ERROR" {% if item and item.severity == 'ERROR' %}selected{% endif %}>ERROR</option>
+        </select>
+
+        <label>Trạng thái rule</label>
+        <select name="is_active">
+            <option value="1" {% if not item or item.is_active %}selected{% endif %}>Bật</option>
+            <option value="0" {% if item and not item.is_active %}selected{% endif %}>Tắt</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/rules" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}

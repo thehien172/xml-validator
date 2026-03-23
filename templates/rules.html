@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Rules{% endblock %}
+
+{% block content %}
+<h1>Danh sách rules</h1>
+
+<div class="filter-box">
+    <form method="GET">
+        <div class="row">
+            <div class="col">
+                <label>Tìm kiếm</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Tên rule, thông báo, bộ rule...">
+            </div>
+            <div class="col">
+                <label>Bộ rule</label>
+                <select name="bo_rule_id">
+                    <option value="">-- Tất cả --</option>
+                    {% for b in bo_rules %}
+                        <option value="{{ b.id }}" {% if bo_rule_id and bo_rule_id|int == b.id %}selected{% endif %}>
+                            {{ b.ma_bo_rule }} - {{ b.ten_bo_rule }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col">
+                <label>Trạng thái rule</label>
+                <select name="status">
+                    <option value="">-- Tất cả --</option>
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Đang bật</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Đang tắt</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Tìm</button>
+        <a href="/rules" class="btn">Xóa lọc</a>
+        <a href="/rules/create" class="btn">+ Thêm rule</a>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Bộ rule</th>
+            <th>Tên rule</th>
+            <th>Thông báo</th>
+            <th>Severity</th>
+            <th>Trạng thái rule</th>
+            <th>Số detail</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in rules %}
+        <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.bo_rule.ma_bo_rule }} - {{ r.bo_rule.ten_bo_rule }}</td>
+            <td>{{ r.ten_rule }}</td>
+            <td>{{ r.thong_bao }}</td>
+            <td>{{ r.severity }}</td>
+            <td>
+                {% if r.is_active %}
+                    <span class="badge badge-ok">ACTIVE</span>
+                {% else %}
+                    <span class="badge badge-off">INACTIVE</span>
+                {% endif %}
+            </td>
+            <td>{{ r.details|length }}</td>
+            <td class="actions">
+                <a class="btn" href="/rules/{{ r.id }}/details">Chi tiết</a>
+                <a class="btn" href="/rules/{{ r.id }}/edit">Sửa</a>
+                <form class="inline" method="POST" action="/rules/{{ r.id }}/delete" onsubmit="return confirm('Xóa rule này?');">
+                    <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

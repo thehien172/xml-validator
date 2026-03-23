@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Trường dữ liệu{% endblock %}
+
+{% block content %}
+<h1>Danh mục trường dữ liệu</h1>
+
+<div class="filter-box">
+    <form method="GET">
+        <div class="row">
+            <div class="col">
+                <label>Tìm theo tên / path / XML</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Họ tên, ./MA_BAC_SI, XML3...">
+            </div>
+            <div class="col">
+                <label>Lọc theo XML</label>
+                <select name="xml_id">
+                    <option value="">-- Tất cả --</option>
+                    {% for x in xmls %}
+                        <option value="{{ x.id }}" {% if xml_id and xml_id|int == x.id %}selected{% endif %}>
+                            {{ x.ma_xml }} - {{ x.ten_xml }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Tìm</button>
+        <a href="/fields" class="btn">Xóa lọc</a>
+        <a href="/fields/create" class="btn">+ Thêm field</a>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tên trường</th>
+            <th>XML</th>
+            <th>Path</th>
+            <th>Kiểu dữ liệu</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in fields %}
+        <tr>
+            <td>{{ f.id }}</td>
+            <td>{{ f.ten_truong }}</td>
+            <td>{{ f.xml.ma_xml }} - {{ f.xml.ten_xml }}</td>
+            <td>{{ f.xml_path }}</td>
+            <td>{{ f.data_type }}</td>
+            <td class="actions">
+                <a class="btn" href="/fields/{{ f.id }}/edit">Sửa</a>
+                <form class="inline" method="POST" action="/fields/{{ f.id }}/delete" onsubmit="return confirm('Xóa field này?');">
+                    <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

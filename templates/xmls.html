@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Danh mục XML{% endblock %}
+
+{% block content %}
+<h1>Danh mục XML</h1>
+
+<div class="filter-box">
+    <form method="GET">
+        <div class="row">
+            <div class="col">
+                <label>Tìm kiếm</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Mã XML, tên XML, path...">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Tìm</button>
+        <a href="/xmls" class="btn">Xóa lọc</a>
+        <a href="/xmls/create" class="btn">+ Thêm XML</a>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Mã XML</th>
+            <th>Tên XML</th>
+            <th>List path</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for x in xmls %}
+        <tr>
+            <td>{{ x.id }}</td>
+            <td>{{ x.ma_xml }}</td>
+            <td>{{ x.ten_xml }}</td>
+            <td>{{ x.list_path }}</td>
+            <td class="actions">
+                <a class="btn" href="/xmls/{{ x.id }}/edit">Sửa</a>
+                <form class="inline" method="POST" action="/xmls/{{ x.id }}/delete" onsubmit="return confirm('Xóa XML này?');">
+                    <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

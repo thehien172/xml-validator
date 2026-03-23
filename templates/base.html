@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}XML Validator{% endblock %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f7f7f7;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        nav {
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 12px;
+            text-decoration: none;
+            color: #0b57d0;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #f2f2f2;
+        }
+        .actions a, .actions button {
+            margin-right: 6px;
+        }
+        .btn, button {
+            padding: 7px 12px;
+            border: 1px solid #ccc;
+            background: #f8f8f8;
+            cursor: pointer;
+            border-radius: 4px;
+            text-decoration: none;
+            color: black;
+        }
+        .btn-primary {
+            background: #0b57d0;
+            color: white;
+            border-color: #0b57d0;
+        }
+        .btn-danger {
+            background: #d93025;
+            color: white;
+            border-color: #d93025;
+        }
+        form.inline {
+            display: inline;
+        }
+        .filter-box, .form-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 90px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+        .col {
+            flex: 1;
+        }
+        .muted {
+            color: #666;
+            font-size: 13px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #e8eefc;
+        }
+        .badge-ok {
+            background: #e6f4ea;
+        }
+        .badge-off {
+            background: #fce8e6;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <nav>
+        <a href="/">Kiểm tra XML</a>
+        <a href="/systems">Hệ thống</a>
+        <a href="/units">Đơn vị</a>
+        <a href="/xmls">Danh mục XML</a>
+        <a href="/fields">Trường dữ liệu</a>
+        <a href="/rule-sets">Bộ rule</a>
+        <a href="/rules">Rules</a>
+    </nav>
+
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>

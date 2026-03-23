@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Kiểm tra XML{% endblock %}
+
+{% block content %}
+<h1>Kiểm tra XML bệnh nhân</h1>
+
+<div class="form-box">
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="xml_file" accept=".xml">
+        <button type="submit" class="btn btn-primary">Kiểm tra</button>
+    </form>
+</div>
+
+{% if error %}
+    <div style="color:red; margin-bottom:15px;">{{ error }}</div>
+{% endif %}
+
+<h2>Kết quả kiểm tra theo hồ sơ bệnh nhân</h2>
+
+{% if hoso_results %}
+<table border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse;">
+    <thead style="background:#f5f5f5;">
+        <tr>
+            <th>Mã bệnh nhân</th>
+            <th>Họ tên</th>
+            <th>Mức độ</th>
+            <th>Nội dung cảnh báo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for hoso in hoso_results %}
+            {% if hoso.warnings %}
+                {% for item in hoso.warnings %}
+                    <tr>
+                        <td>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</td>
+                        <td>{{ hoso.patient_name if hoso.patient_name else '(không có)' }}</td>
+                        <td>
+                            <span class="badge">{{ item.severity }}</span>
+                        </td>
+                        <td>{{ item.message }}</td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+    <p>Chưa có dữ liệu kiểm tra.</p>
+{% endif %}
+
+{% endblock %}

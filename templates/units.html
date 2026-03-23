@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Đơn vị{% endblock %}
+
+{% block content %}
+<h1>Quản trị đơn vị</h1>
+
+<div class="filter-box">
+    <form method="GET">
+        <div class="row">
+            <div class="col">
+                <label>Tìm kiếm</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="62058, BV YHCT, L2...">
+            </div>
+            <div class="col">
+                <label>Lọc theo hệ thống</label>
+                <select name="he_thong_id">
+                    <option value="">-- Tất cả --</option>
+                    {% for s in systems %}
+                        <option value="{{ s.id }}" {% if he_thong_id and he_thong_id|int == s.id %}selected{% endif %}>
+                            {{ s.ten_he_thong }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Tìm</button>
+        <a href="/units" class="btn">Xóa lọc</a>
+        <a href="/units/create" class="btn">+ Thêm đơn vị</a>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Mã đơn vị</th>
+            <th>Tên đơn vị</th>
+            <th>Hệ thống</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for x in items %}
+        <tr>
+            <td>{{ x.id }}</td>
+            <td>{{ x.ma_don_vi }}</td>
+            <td>{{ x.ten_don_vi }}</td>
+            <td>{{ x.he_thong.ten_he_thong }}</td>
+            <td class="actions">
+                <a class="btn" href="/units/{{ x.id }}/edit">Sửa</a>
+                <form class="inline" method="POST" action="/units/{{ x.id }}/delete" onsubmit="return confirm('Xóa đơn vị này?');">
+                    <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

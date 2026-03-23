@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Bộ rule{% endblock %}
+
+{% block content %}
+<h1>Danh sách bộ rule</h1>
+
+<div class="filter-box">
+    <form method="GET">
+        <div class="row">
+            <div class="col">
+                <label>Tìm kiếm</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="4750, 3176, tên bộ rule...">
+            </div>
+            <div class="col">
+                <label>Trạng thái</label>
+                <select name="status">
+                    <option value="">-- Tất cả --</option>
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Đang bật</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Đang tắt</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Tìm</button>
+        <a href="/rule-sets" class="btn">Xóa lọc</a>
+        <a href="/rule-sets/create" class="btn">+ Thêm bộ rule</a>
+    </form>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Mã bộ rule</th>
+            <th>Tên bộ rule</th>
+            <th>Mô tả</th>
+            <th>Trạng thái</th>
+            <th>Số rule</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for x in items %}
+        <tr>
+            <td>{{ x.id }}</td>
+            <td>{{ x.ma_bo_rule }}</td>
+            <td>{{ x.ten_bo_rule }}</td>
+            <td>{{ x.mo_ta or '' }}</td>
+            <td>
+                {% if x.is_active %}
+                    <span class="badge badge-ok">ACTIVE</span>
+                {% else %}
+                    <span class="badge badge-off">INACTIVE</span>
+                {% endif %}
+            </td>
+            <td>{{ x.rules|length }}</td>
+            <td class="actions">
+                <a class="btn" href="/rule-sets/{{ x.id }}/edit">Sửa</a>
+                <form class="inline" method="POST" action="/rule-sets/{{ x.id }}/delete" onsubmit="return confirm('Xóa bộ rule này?');">
+                    <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

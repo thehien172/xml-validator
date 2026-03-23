@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa hệ thống{% else %}Thêm hệ thống{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa hệ thống{% else %}Thêm hệ thống{% endif %}</h1>
+
+<div class="form-box">
+    <form method="POST">
+        <label>Tên hệ thống</label>
+        <input type="text" name="ten_he_thong" required value="{{ item.ten_he_thong if item else '' }}" placeholder="L2">
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/systems" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}

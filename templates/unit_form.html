@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa đơn vị{% else %}Thêm đơn vị{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa đơn vị{% else %}Thêm đơn vị{% endif %}</h1>
+
+<div class="form-box">
+    <form method="POST">
+        <label>Mã đơn vị</label>
+        <input type="text" name="ma_don_vi" required value="{{ item.ma_don_vi if item else '' }}" placeholder="62058">
+
+        <label>Tên đơn vị</label>
+        <input type="text" name="ten_don_vi" required value="{{ item.ten_don_vi if item else '' }}" placeholder="BV YHCT - CS1">
+
+        <label>Hệ thống</label>
+        <select name="he_thong_id" required>
+            {% for s in systems %}
+                <option value="{{ s.id }}" {% if item and item.he_thong_id == s.id %}selected{% endif %}>
+                    {{ s.ten_he_thong }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/units" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}

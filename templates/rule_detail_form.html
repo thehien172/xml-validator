@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa rule detail{% else %}Thêm rule detail{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa{% else %}Thêm{% endif %} rule detail</h1>
+<p><b>Rule:</b> {{ rule.ten_rule }}</p>
+
+<div class="form-box">
+    <form method="GET" action="">
+        <label>Chọn XML trước để lọc field</label>
+        <select name="xml_id" onchange="this.form.submit()">
+            <option value="">-- Chọn XML --</option>
+            {% for x in xmls %}
+                <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int == x.id %}selected{% endif %}>
+                    {{ x.ma_xml }} - {{ x.ten_xml }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <form method="POST">
+        <input type="hidden" name="xml_id" value="{{ selected_xml_id }}">
+
+        <label>Role</label>
+        <select name="condition_role" required>
+            <option value="TRIGGER" {% if item and item.condition_role == 'TRIGGER' %}selected{% endif %}>TRIGGER</option>
+            <option value="VALIDATE" {% if not item or item.condition_role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
+        </select>
+
+        <label>Field</label>
+        <select name="field_id" required>
+            <option value="">-- Chọn field --</option>
+            {% for f in fields %}
+                <option value="{{ f.id }}" {% if item and item.field_id == f.id %}selected{% endif %}>
+                    {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Condition</label>
+        <select name="condition_id" required>
+            {% for c in conditions %}
+                <option value="{{ c.id }}" {% if item and item.condition_id == c.id %}selected{% endif %}>
+                    {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Giá trị so sánh</label>
+        <input type="text" name="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12">
+
+        <label>Thứ tự</label>
+        <input type="text" name="sort_order" value="{{ item.sort_order if item else '1' }}">
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/rules/{{ rule.id }}/details" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}

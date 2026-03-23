@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa field{% else %}Thêm field{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Sửa field{% else %}Thêm field{% endif %}</h1>
+
+<div class="form-box">
+    <form method="POST">
+        <label>Tên trường</label>
+        <input type="text" name="ten_truong" required value="{{ item.ten_truong if item else '' }}">
+
+        <label>XML</label>
+        <select name="xml_id" required>
+            {% for x in xmls %}
+                <option value="{{ x.id }}" {% if item and item.xml_id == x.id %}selected{% endif %}>
+                    {{ x.ma_xml }} - {{ x.ten_xml }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>XML path (trong item)</label>
+        <input type="text" name="xml_path" required value="{{ item.xml_path if item else '' }}" placeholder="./HO_TEN">
+
+        <label>Kiểu dữ liệu</label>
+        <select name="data_type">
+            <option value="STRING" {% if item and item.data_type == 'STRING' %}selected{% endif %}>STRING</option>
+            <option value="NUMBER" {% if item and item.data_type == 'NUMBER' %}selected{% endif %}>NUMBER</option>
+            <option value="DATE" {% if item and item.data_type == 'DATE' %}selected{% endif %}>DATE</option>
+            <option value="BOOLEAN" {% if item and item.data_type == 'BOOLEAN' %}selected{% endif %}>BOOLEAN</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Lưu</button>
+        <a href="/fields" class="btn">Quay lại</a>
+    </form>
+</div>
+{% endblock %}
