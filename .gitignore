@@ -4,3 +4,6 @@ __pycache__/
 .env
 *.log
 *.sqlite3
+*.sqlproj
+settings.json
+tasks.json

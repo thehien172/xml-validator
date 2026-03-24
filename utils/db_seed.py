@@ -231,14 +231,6 @@ def seed_conditions():
 
 
 def seed_rule_sets():
-    if not BoRule.query.filter_by(ma_bo_rule="4750").first():
-        db.session.add(BoRule(
-            ma_bo_rule="4750",
-            ten_bo_rule="Bộ rule theo Quyết định 4750",
-            mo_ta="Các rule kiểm tra theo chuẩn QĐ 4750",
-            is_active=True
-        ))
-
     if not BoRule.query.filter_by(ma_bo_rule="3176").first():
         db.session.add(BoRule(
             ma_bo_rule="3176",
