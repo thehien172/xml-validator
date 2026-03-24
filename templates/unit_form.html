@@ -2,9 +2,14 @@
 {% block title %}{% if item %}Sửa đơn vị{% else %}Thêm đơn vị{% endif %}{% endblock %}
 
 {% block content %}
-<h1>{% if item %}Sửa đơn vị{% else %}Thêm đơn vị{% endif %}</h1>
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa đơn vị{% else %}Thêm đơn vị{% endif %}</h1>
+    <div class="page-subtitle">Khai báo đơn vị và tài khoản dùng để gọi API theo từng hệ thống.</div>
+</div>
 
-<div class="form-box">
+<div class="card">
+    <h2 class="card-title">Thông tin đơn vị</h2>
+
     <form method="POST">
         <label>Mã đơn vị</label>
         <input type="text" name="ma_don_vi" required value="{{ item.ma_don_vi if item else '' }}" placeholder="62058">
@@ -15,14 +20,22 @@
         <label>Hệ thống</label>
         <select name="he_thong_id" required>
             {% for s in systems %}
-                <option value="{{ s.id }}" {% if item and item.he_thong_id == s.id %}selected{% endif %}>
-                    {{ s.ten_he_thong }}
-                </option>
+            <option value="{{ s.id }}" {% if item and item.he_thong_id == s.id %}selected{% endif %}>
+                {{ s.ten_he_thong }}
+            </option>
             {% endfor %}
         </select>
 
-        <button type="submit" class="btn btn-primary">Lưu</button>
-        <a href="/units" class="btn">Quay lại</a>
+        <label>API Username</label>
+        <input type="text" name="api_username" value="{{ item.api_username if item else '' }}" placeholder="Tên đăng nhập API">
+
+        <label>API Password</label>
+        <input type="text" name="api_password" value="{{ item.api_password if item else '' }}" placeholder="Mật khẩu API">
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/units" class="btn btn-secondary">Quay lại</a>
+        </div>
     </form>
 </div>
 {% endblock %}

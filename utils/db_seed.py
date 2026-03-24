@@ -21,19 +21,20 @@ SAMPLE_XML_PATH = os.path.join(
 
 
 XML_CONFIGS = [
-    ("XML1", "XML1 - Thông tin tổng hợp", "./TONG_HOP"),
-    ("XML2", "XML2 - Chi tiết thuốc", "./CHITIEU_CHITIET_THUOC/DSACH_CHI_TIET_THUOC/CHI_TIET_THUOC"),
-    ("XML3", "XML3 - Chi tiết DVKT", "./CHITIEU_CHITIET_DVKT_VTYT/DSACH_CHI_TIET_DVKT/CHI_TIET_DVKT"),
-    ("XML4", "XML4 - Cận lâm sàng", "./CHITIEU_CHITIET_DICHVUCANLAMSANG/DSACH_CHI_TIET_CLS/CHI_TIET_CLS"),
-    ("XML5", "XML5 - Diễn biến lâm sàng", "./CHITIEU_CHITIET_DIENBIENLAMSANG/DSACH_CHI_TIET_DIEN_BIEN_BENH/CHI_TIET_DIEN_BIEN_BENH"),
-    ("XML6", "XML6 - HIV/AIDS", "./CHI_TIEU_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS/DSACH_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS"),
-    ("XML7", "XML7 - Giấy ra viện", "./CHI_TIEU_DU_LIEU_GIAY_RA_VIEN"),
-    ("XML8", "XML8 - Tóm tắt hồ sơ bệnh án", "./CHI_TIEU_DU_LIEU_TOM_TAT_HO_SO_BENH_AN"),
-    # ("XML10", "XML10", "./"),
-    # ("XML11", "XML11", "./"),
-    # ("XML13", "XML13", "./"),
-    # ("XML14", "XML14", "./"),
-    ("XML15", "XML15 - Điều trị bệnh lao", "./CHI_TIEU_DIEUTRI_BENHLAO/DSACH_CHITIET_DIEUTRI_BENHLAO"),
+    ("XML1", "Thông tin tổng hợp hồ sơ", "./TONG_HOP"),
+    ("XML2", "Danh sách chi tiết thuốc", "./CHITIEU_CHITIET_THUOC/DSACH_CHI_TIET_THUOC/CHI_TIET_THUOC"),
+    ("XML3", "Danh sách DVKT", "./CHITIEU_CHITIET_DVKT_VTYT/DSACH_CHI_TIET_DVKT/CHI_TIET_DVKT"),
+    ("XML4", "Danh sách CLS", "./CHITIEU_CHITIET_DICHVUCANLAMSANG/DSACH_CHI_TIET_CLS/CHI_TIET_CLS"),
+    ("XML5", "Danh sách DV khác", "./CHITIEU_CHITIET_DIENBIENLAMSANG/DSACH_CHI_TIET_DIEN_BIEN_BENH/CHI_TIET_DIEN_BIEN_BENH"),
+    ("XML6", "Danh sách diễn biến bệnh", "./CHI_TIEU_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS/DSACH_HO_SO_BENH_AN_CHAM_SOC_VA_DIEU_TRI_HIV_AIDS"),
+    ("XML7", "Thông tin giấy ra viện", "./CHI_TIEU_DU_LIEU_GIAY_RA_VIEN"),
+    ("XML8", "Thông tin giấy chuyển tuyến", "./CHI_TIEU_DU_LIEU_TOM_TAT_HO_SO_BENH_AN"),
+    # ("XML9", "Danh sách toa thuốc", "./"),
+    # ("XML10", "Thông tin y lệnh", "./"),
+    # ("XML11", "Thông tin phiếu công khai", "./"),
+    # ("XML13", "Thông tin giấy hẹn khám lại", "./"),
+    # ("XML14", "Thông tin giấy chứng nhận nghỉ việc", "./"),
+    # ("XML15", "Danh sách diễn biến khác", "./"),
 ]
 
 
@@ -53,17 +54,19 @@ def seed_systems_and_units():
     l2 = HeThong.query.filter_by(ten_he_thong="L2").first()
 
     units = [
-        ("62058", "BV YHCT - CS1", l2.id),
-        ("62134", "BV YHCT - CS2", l2.id),
-        ("62126", "Bệnh xá 24", l2.id),
+        ("62126", "Bệnh xá 24", l2.id, 'BX.HIENLTADMIN', 'Thehien@172'),
+        ("62058", "BV YHCT - CS1", l2.id, '', ''),
+        ("62134", "BV YHCT - CS2", l2.id, '', ''),
     ]
 
-    for ma_don_vi, ten_don_vi, he_thong_id in units:
+    for ma_don_vi, ten_don_vi, he_thong_id, api_username, api_password in units:
         if not DonVi.query.filter_by(ma_don_vi=ma_don_vi).first():
             db.session.add(DonVi(
                 ma_don_vi=ma_don_vi,
                 ten_don_vi=ten_don_vi,
-                he_thong_id=he_thong_id
+                he_thong_id=he_thong_id,
+                api_username = api_username,
+                api_password = api_password
             ))
     db.session.commit()
 
@@ -246,77 +249,9 @@ def seed_rule_sets():
 
     db.session.commit()
 
-
-def seed_sample_rules():
-    if Rule.query.first():
-        return
-
-    bo_rule_4750 = BoRule.query.filter_by(ma_bo_rule="4750").first()
-    cond_not_null = DanhMucDieuKien.query.filter_by(ma_dieu_kien="NOT_NULL").first()
-    cond_equal = DanhMucDieuKien.query.filter_by(ma_dieu_kien="EQUAL").first()
-
-    xml1 = DanhMucXml.query.filter_by(ma_xml="XML1").first()
-    xml3 = DanhMucXml.query.filter_by(ma_xml="XML3").first()
-
-    field_ho_ten = DanhMucTruongDuLieu.query.filter_by(xml_id=xml1.id, xml_path="./HO_TEN").first()
-    field_ma_nhom = DanhMucTruongDuLieu.query.filter_by(xml_id=xml3.id, xml_path="./MA_NHOM").first()
-    field_ma_bac_si = DanhMucTruongDuLieu.query.filter_by(xml_id=xml3.id, xml_path="./MA_BAC_SI").first()
-
-    rule_1 = Rule(
-        bo_rule_id=bo_rule_4750.id,
-        ten_rule="Check họ và tên",
-        thong_bao="Thiếu họ và tên",
-        severity="WARNING",
-        is_active=True
-    )
-
-    rule_2 = Rule(
-        bo_rule_id=bo_rule_4750.id,
-        ten_rule="Check mã bác sĩ",
-        thong_bao="Thiếu mã bác sĩ",
-        severity="WARNING",
-        is_active=True
-    )
-
-    db.session.add_all([rule_1, rule_2])
-    db.session.commit()
-
-    db.session.add_all([
-        RuleDetail(
-            rule_id=rule_1.id,
-            field_id=field_ho_ten.id,
-            condition_id=cond_not_null.id,
-            gia_tri=None,
-            condition_role="VALIDATE",
-            sort_order=1,
-            compare_mode="VALUE"
-        ),
-        RuleDetail(
-            rule_id=rule_2.id,
-            field_id=field_ma_nhom.id,
-            condition_id=cond_equal.id,
-            gia_tri="12",
-            condition_role="TRIGGER",
-            sort_order=1,
-            compare_mode="VALUE"
-        ),
-        RuleDetail(
-            rule_id=rule_2.id,
-            field_id=field_ma_bac_si.id,
-            condition_id=cond_not_null.id,
-            gia_tri=None,
-            condition_role="VALIDATE",
-            sort_order=2,
-            compare_mode="VALUE"
-        )
-    ])
-    db.session.commit()
-
-
 def seed_data():
     seed_systems_and_units()
     seed_xml_configs()
     seed_fields_from_sample()
     seed_conditions()
     seed_rule_sets()
-    # seed_sample_rules()

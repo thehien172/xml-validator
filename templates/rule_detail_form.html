@@ -2,15 +2,34 @@
 {% block title %}{% if item %}Sửa rule detail{% else %}Thêm rule detail{% endif %}{% endblock %}
 
 {% block content %}
-<h1>{% if item %}Sửa{% else %}Thêm{% endif %} rule detail</h1>
-<p><b>Rule:</b> {{ rule.ten_rule }}</p>
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa{% else %}Thêm{% endif %} rule detail</h1>
+    <div class="page-subtitle">Cấu hình trigger hoặc validate cho rule: {{ rule.ten_rule }}</div>
+</div>
 
-<div class="form-box">
-    <form method="GET" action="">
-        <div class="row">
-            <div class="col">
+<div class="card">
+    <h2 class="card-title">Thông tin detail</h2>
+
+    <form method="POST" id="rule-detail-form">
+        <div class="grid">
+            <div class="col-6">
+                <label>Role</label>
+                <select name="condition_role" required>
+                    <option value="TRIGGER" {% if item and item.condition_role == 'TRIGGER' %}selected{% endif %}>TRIGGER</option>
+                    <option value="VALIDATE" {% if not item or item.condition_role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
+                </select>
+            </div>
+
+            <div class="col-6">
+                <label>Thứ tự</label>
+                <input type="text" name="sort_order" value="{{ item.sort_order if item else '1' }}" placeholder="1">
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="col-6">
                 <label>XML nguồn</label>
-                <select name="xml_id" onchange="this.form.submit()">
+                <select name="xml_id" id="xml_id" onchange="this.form.submit()" required>
                     <option value="">-- Chọn XML --</option>
                     {% for x in xmls %}
                         <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int == x.id %}selected{% endif %}>
@@ -19,73 +38,112 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col">
-                <label>XML so sánh</label>
-                <select name="compare_xml_id" onchange="this.form.submit()">
-                    <option value="">-- Chọn XML so sánh --</option>
-                    {% for x in xmls %}
-                        <option value="{{ x.id }}" {% if compare_xml_id and compare_xml_id|int == x.id %}selected{% endif %}>
-                            {{ x.ma_xml }} - {{ x.ten_xml }}
+
+            <div class="col-6">
+                <label>Field nguồn</label>
+                <select name="field_id" required>
+                    <option value="">-- Chọn field --</option>
+                    {% for f in fields %}
+                        <option value="{{ f.id }}" {% if item and item.field_id == f.id %}selected{% endif %}>
+                            {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
         </div>
-    </form>
 
-    <form method="POST">
-        <input type="hidden" name="xml_id" value="{{ selected_xml_id }}">
-        <input type="hidden" name="compare_xml_id" value="{{ compare_xml_id }}">
+        <div class="grid">
+            <div class="col-6">
+                <label>Condition</label>
+                <select name="condition_id" required>
+                    {% for c in conditions %}
+                        <option value="{{ c.id }}" {% if item and item.condition_id == c.id %}selected{% endif %}>
+                            {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <label>Role</label>
-        <select name="condition_role" required>
-            <option value="TRIGGER" {% if item and item.condition_role == 'TRIGGER' %}selected{% endif %}>TRIGGER</option>
-            <option value="VALIDATE" {% if not item or item.condition_role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
-        </select>
+            <div class="col-6">
+                <label>Kiểu so sánh</label>
+                <select name="compare_mode" id="compare_mode">
+                    <option value="VALUE" {% if not item or item.compare_mode == 'VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
+                    <option value="FIELD" {% if item and item.compare_mode == 'FIELD' %}selected{% endif %}>So sánh với field khác</option>
+                </select>
+            </div>
+        </div>
 
-        <label>Field nguồn</label>
-        <select name="field_id" required>
-            <option value="">-- Chọn field --</option>
-            {% for f in fields %}
-                <option value="{{ f.id }}" {% if item and item.field_id == f.id %}selected{% endif %}>
-                    {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
-                </option>
-            {% endfor %}
-        </select>
+        <div class="grid" id="value_compare_group">
+            <div class="col-12">
+                <label>Giá trị so sánh</label>
+                <input type="text" name="gia_tri" id="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12 hoặc A,B,C">
+            </div>
+        </div>
 
-        <label>Condition</label>
-        <select name="condition_id" required>
-            {% for c in conditions %}
-                <option value="{{ c.id }}" {% if item and item.condition_id == c.id %}selected{% endif %}>
-                    {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
-                </option>
-            {% endfor %}
-        </select>
+        <div id="field_compare_group">
+            <div class="grid">
+                <div class="col-6">
+                    <label>XML so sánh</label>
+                    <select name="compare_xml_id" id="compare_xml_id" onchange="this.form.submit()">
+                        <option value="">-- Chọn XML so sánh --</option>
+                        {% for x in xmls %}
+                            <option value="{{ x.id }}" {% if compare_xml_id and compare_xml_id|int == x.id %}selected{% endif %}>
+                                {{ x.ma_xml }} - {{ x.ten_xml }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-        <label>Kiểu so sánh</label>
-        <select name="compare_mode">
-            <option value="VALUE" {% if not item or item.compare_mode == 'VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
-            <option value="FIELD" {% if item and item.compare_mode == 'FIELD' %}selected{% endif %}>So sánh với field khác</option>
-        </select>
+                <div class="col-6">
+                    <label>Field so sánh</label>
+                    <select name="compare_field_id" id="compare_field_id">
+                        <option value="">-- Chọn field so sánh --</option>
+                        {% for f in compare_fields %}
+                            <option value="{{ f.id }}" {% if item and item.compare_field_id == f.id %}selected{% endif %}>
+                                {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
 
-        <label>Giá trị so sánh</label>
-        <input type="text" name="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12 hoặc 123,456,789">
-
-        <label>Field so sánh</label>
-        <select name="compare_field_id">
-            <option value="">-- Chọn field so sánh --</option>
-            {% for f in compare_fields %}
-                <option value="{{ f.id }}" {% if item and item.compare_field_id == f.id %}selected{% endif %}>
-                    {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
-                </option>
-            {% endfor %}
-        </select>
-
-        <label>Thứ tự</label>
-        <input type="text" name="sort_order" value="{{ item.sort_order if item else '1' }}">
-
-        <button type="submit" class="btn btn-primary">Lưu</button>
-        <a href="/rules/{{ rule.id }}/details" class="btn">Quay lại</a>
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/rules/{{ rule.id }}/details" class="btn btn-secondary">Quay lại</a>
+        </div>
     </form>
 </div>
+
+<script>
+    (function () {
+        const compareMode = document.getElementById("compare_mode");
+        const valueGroup = document.getElementById("value_compare_group");
+        const fieldGroup = document.getElementById("field_compare_group");
+        const giaTriInput = document.getElementById("gia_tri");
+        const compareXmlSelect = document.getElementById("compare_xml_id");
+        const compareFieldSelect = document.getElementById("compare_field_id");
+
+        function toggleCompareMode() {
+            const mode = compareMode.value;
+
+            if (mode === "FIELD") {
+                valueGroup.style.display = "none";
+                fieldGroup.style.display = "block";
+
+                giaTriInput.value = "";
+            } else {
+                valueGroup.style.display = "block";
+                fieldGroup.style.display = "block";
+
+                compareXmlSelect.value = "";
+                compareFieldSelect.value = "";
+                fieldGroup.style.display = "none";
+            }
+        }
+
+        compareMode.addEventListener("change", toggleCompareMode);
+        toggleCompareMode();
+    })();
+</script>
 {% endblock %}

@@ -19,6 +19,17 @@ class DonVi(db.Model):
     ten_don_vi = db.Column(db.String(255), nullable=False)
     he_thong_id = db.Column(db.Integer, db.ForeignKey("he_thong.id"), nullable=False)
 
+    api_username = db.Column(db.String(100))
+    api_password = db.Column(db.String(100))
+
+    api_base_url = db.Column(db.String(255))
+    api_uuid = db.Column(db.Text)
+    api_his_token = db.Column(db.Text)
+    api_token_expire_at = db.Column(db.DateTime)
+
+    api_jsessionid = db.Column(db.String(255))
+    api_sessionid = db.Column(db.Text)
+
     he_thong = db.relationship("HeThong", backref="don_vis")
 
     def __repr__(self):

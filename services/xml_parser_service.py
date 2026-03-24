@@ -1,5 +1,8 @@
 from lxml import etree
 
+def parse_xml_content(xml_content):
+    parser = etree.XMLParser(remove_blank_text=True, recover=True, encoding="utf-8")
+    return etree.fromstring(xml_content.encode("utf-8"), parser)
 
 def parse_xml_file(file_path):
     parser = etree.XMLParser(remove_blank_text=True, recover=True, encoding="utf-8")

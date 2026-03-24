@@ -2,47 +2,63 @@
 {% block title %}Danh mục XML{% endblock %}
 
 {% block content %}
-<h1>Danh mục XML</h1>
+<div class="page-header">
+    <h1 class="page-title">Danh mục XML</h1>
+    <div class="page-subtitle">Quản lý mã XML, tên XML và path lấy danh sách node tương ứng.</div>
+</div>
 
-<div class="filter-box">
+<div class="card">
+    <h2 class="card-title">Bộ lọc</h2>
+
     <form method="GET">
-        <div class="row">
-            <div class="col">
-                <label>Tìm kiếm</label>
-                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Mã XML, tên XML, path...">
-            </div>
+        <label>Tìm kiếm</label>
+        <input type="text" name="keyword" value="{{ keyword }}" placeholder="Mã XML, tên XML, path...">
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Tìm</button>
+            <a href="/xmls" class="btn btn-secondary">Xóa lọc</a>
+            <a href="/xmls/create" class="btn btn-primary">+ Thêm XML</a>
         </div>
-        <button type="submit" class="btn btn-primary">Tìm</button>
-        <a href="/xmls" class="btn">Xóa lọc</a>
-        <a href="/xmls/create" class="btn">+ Thêm XML</a>
     </form>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Mã XML</th>
-            <th>Tên XML</th>
-            <th>List path</th>
-            <th>Thao tác</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for x in xmls %}
-        <tr>
-            <td>{{ x.id }}</td>
-            <td>{{ x.ma_xml }}</td>
-            <td>{{ x.ten_xml }}</td>
-            <td>{{ x.list_path }}</td>
-            <td class="actions">
-                <a class="btn" href="/xmls/{{ x.id }}/edit">Sửa</a>
-                <form class="inline" method="POST" action="/xmls/{{ x.id }}/delete" onsubmit="return confirm('Xóa XML này?');">
-                    <button class="btn btn-danger" type="submit">Xóa</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="card">
+    <h2 class="card-title">Danh sách XML</h2>
+
+    {% if xmls %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 90px;">ID</th>
+                        <th style="width: 140px;">Mã XML</th>
+                        <th>Tên XML</th>
+                        <th>List path</th>
+                        <th style="width: 180px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in xmls %}
+                    <tr>
+                        <td><strong>{{ x.id }}</strong></td>
+                        <td>{{ x.ma_xml }}</td>
+                        <td>{{ x.ten_xml }}</td>
+                        <td><code>{{ x.list_path }}</code></td>
+                        <td>
+                            <div class="actions">
+                                <a class="btn btn-secondary" href="/xmls/{{ x.id }}/edit">Sửa</a>
+                                <form class="inline" method="POST" action="/xmls/{{ x.id }}/delete" onsubmit="return confirm('Xóa XML này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">Chưa có dữ liệu XML.</div>
+    {% endif %}
+</div>
 {% endblock %}

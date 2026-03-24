@@ -2,12 +2,17 @@
 {% block title %}{% if item %}Sửa field{% else %}Thêm field{% endif %}{% endblock %}
 
 {% block content %}
-<h1>{% if item %}Sửa field{% else %}Thêm field{% endif %}</h1>
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa field{% else %}Thêm field{% endif %}</h1>
+    <div class="page-subtitle">Khai báo trường dữ liệu để dùng trong rule trigger và validate.</div>
+</div>
 
-<div class="form-box">
+<div class="card">
+    <h2 class="card-title">Thông tin field</h2>
+
     <form method="POST">
         <label>Tên trường</label>
-        <input type="text" name="ten_truong" required value="{{ item.ten_truong if item else '' }}">
+        <input type="text" name="ten_truong" required value="{{ item.ten_truong if item else '' }}" placeholder="Họ tên">
 
         <label>XML</label>
         <select name="xml_id" required>
@@ -29,8 +34,10 @@
             <option value="BOOLEAN" {% if item and item.data_type == 'BOOLEAN' %}selected{% endif %}>BOOLEAN</option>
         </select>
 
-        <button type="submit" class="btn btn-primary">Lưu</button>
-        <a href="/fields" class="btn">Quay lại</a>
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/fields" class="btn btn-secondary">Quay lại</a>
+        </div>
     </form>
 </div>
 {% endblock %}

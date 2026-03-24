@@ -2,46 +2,61 @@
 {% block title %}Hệ thống{% endblock %}
 
 {% block content %}
-<h1>Quản trị hệ thống</h1>
+<div class="page-header">
+    <h1 class="page-title">Quản trị hệ thống</h1>
+    <div class="page-subtitle">Danh sách hệ thống đang được cấu hình trong ứng dụng.</div>
+</div>
 
-<div class="filter-box">
+<div class="card">
+    <h2 class="card-title">Bộ lọc</h2>
+
     <form method="GET">
-        <div class="row">
-            <div class="col">
-                <label>Tìm kiếm theo tên</label>
-                <input type="text" name="keyword" value="{{ keyword }}" placeholder="L2, L3...">
-            </div>
-        </div>
+        <label>Tìm kiếm theo tên</label>
+        <input type="text" name="keyword" value="{{ keyword }}" placeholder="L2, L3...">
 
-        <button class="btn btn-primary" type="submit">Tìm</button>
-        <a href="/systems" class="btn">Xóa lọc</a>
-        <a href="/systems/create" class="btn">+ Thêm hệ thống</a>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Tìm</button>
+            <a href="/systems" class="btn btn-secondary">Xóa lọc</a>
+            <a href="/systems/create" class="btn btn-primary">+ Thêm hệ thống</a>
+        </div>
     </form>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Tên hệ thống</th>
-            <th>Số đơn vị</th>
-            <th>Thao tác</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for x in items %}
-        <tr>
-            <td>{{ x.id }}</td>
-            <td>{{ x.ten_he_thong }}</td>
-            <td>{{ x.don_vis|length }}</td>
-            <td class="actions">
-                <a class="btn" href="/systems/{{ x.id }}/edit">Sửa</a>
-                <form class="inline" method="POST" action="/systems/{{ x.id }}/delete" onsubmit="return confirm('Xóa hệ thống này?');">
-                    <button class="btn btn-danger" type="submit">Xóa</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="card">
+    <h2 class="card-title">Danh sách hệ thống</h2>
+
+    {% if items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">ID</th>
+                        <th>Tên hệ thống</th>
+                        <th style="width: 160px;">Số đơn vị</th>
+                        <th style="width: 180px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in items %}
+                    <tr>
+                        <td><strong>{{ x.id }}</strong></td>
+                        <td>{{ x.ten_he_thong }}</td>
+                        <td>{{ x.don_vis|length }}</td>
+                        <td>
+                            <div class="actions">
+                                <a class="btn btn-secondary" href="/systems/{{ x.id }}/edit">Sửa</a>
+                                <form class="inline" method="POST" action="/systems/{{ x.id }}/delete" onsubmit="return confirm('Xóa hệ thống này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">Chưa có dữ liệu hệ thống.</div>
+    {% endif %}
+</div>
 {% endblock %}

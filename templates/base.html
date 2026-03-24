@@ -2,126 +2,369 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}XML Validator{% endblock %}</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --card-soft: #f8fafc;
+            --border: #dbe3ef;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            --radius: 16px;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: #f7f7f7;
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 220px);
+            color: var(--text);
         }
-        .container {
-            max-width: 1200px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
+
+        .page-shell {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
         }
-        nav {
+
+        .topbar {
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(219, 227, 239, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 16px 20px;
             margin-bottom: 20px;
         }
-        nav a {
-            margin-right: 12px;
-            text-decoration: none;
-            color: #0b57d0;
-            font-weight: bold;
+
+        .topbar-title {
+            margin: 0 0 12px 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
         }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #1d4ed8;
+            font-weight: 600;
+            padding: 10px 14px;
+            border-radius: 10px;
+            transition: 0.2s ease;
+            border: 1px solid transparent;
+            background: transparent;
+        }
+
+        nav a:hover {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .container {
+            background: transparent;
+        }
+
+        .page-header {
+            margin-bottom: 22px;
+        }
+
+        .page-title {
+            margin: 0;
+            font-size: 38px;
+            line-height: 1.15;
+            /* font-weight: 800; */
+            color: #0f172a;
+        }
+
+        .page-subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            margin: 0 0 18px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .card-subtitle {
+            margin: -8px 0 18px 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .grid {
+            display: flex;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+
+        .col-12 { grid-column: span 12; }
+        .col-6 { grid-column: span 6; }
+        .col-4 { grid-column: span 4; }
+        .col-3 { grid-column: span 3; }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            margin-top: 8px;
+            color: #374151;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="file"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid #cfd8e3;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            background: #fff;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .btn,
+        button {
+            border: none;
+            min-height: 42px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .alert {
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            border: 1px solid transparent;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background: var(--error-bg);
+            color: var(--error-text);
+            border-color: #fecaca;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .badge-warning {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+
+        .badge-error {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 12px;
+            background: white;
         }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
+
         th {
-            background: #f2f2f2;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: left;
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border);
         }
-        .actions a, .actions button {
-            margin-right: 6px;
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+            font-size: 14px;
         }
-        .btn, button {
-            padding: 7px 12px;
-            border: 1px solid #ccc;
-            background: #f8f8f8;
-            cursor: pointer;
-            border-radius: 4px;
-            text-decoration: none;
-            color: black;
+
+        tbody tr:hover {
+            background: #f8fbff;
         }
-        .btn-primary {
-            background: #0b57d0;
-            color: white;
-            border-color: #0b57d0;
+
+        tbody tr:last-child td {
+            border-bottom: none;
         }
-        .btn-danger {
-            background: #d93025;
-            color: white;
-            border-color: #d93025;
-        }
-        form.inline {
-            display: inline;
-        }
-        .filter-box, .form-box {
-            border: 1px solid #ddd;
-            padding: 15px;
-            background: #fafafa;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-        input[type="text"], select, textarea {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
-            margin-bottom: 12px;
-            box-sizing: border-box;
-        }
-        textarea {
-            min-height: 90px;
-        }
-        .row {
-            display: flex;
-            gap: 20px;
-        }
-        .col {
-            flex: 1;
-        }
+
         .muted {
-            color: #666;
+            color: var(--muted);
             font-size: 13px;
         }
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            background: #e8eefc;
+
+        .empty-state {
+            padding: 28px 18px;
+            text-align: center;
+            color: var(--muted);
+            background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
+            border: 1px dashed #cbd5e1;
+            border-radius: 16px;
         }
-        .badge-ok {
-            background: #e6f4ea;
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #dbe3ef, transparent);
+            margin: 8px 0 0 0;
         }
-        .badge-off {
-            background: #fce8e6;
+
+        @media (max-width: 900px) {
+            .col-6,
+            .col-4,
+            .col-3 {
+                grid-column: span 12;
+            }
+
+            .page-title {
+                font-size: 30px;
+            }
+
+            .page-shell {
+                padding: 14px;
+            }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <nav>
-        <a href="/">Kiểm tra XML</a>
-        <a href="/systems">Hệ thống</a>
-        <a href="/units">Đơn vị</a>
-        <a href="/xmls">Danh mục XML</a>
-        <a href="/fields">Trường dữ liệu</a>
-        <a href="/rule-sets">Bộ rule</a>
-        <a href="/rules">Rules</a>
-    </nav>
+    <div class="page-shell">
+        <div class="topbar">
+            <div class="topbar-title">XML Validator</div>
+            <nav>
+                <a href="/">Kiểm tra XML</a>
+                <a href="/systems">Hệ thống</a>
+                <a href="/units">Đơn vị</a>
+                <a href="/xmls">Danh mục XML</a>
+                <a href="/fields">Trường dữ liệu</a>
+                <a href="/rule-sets">Bộ rule</a>
+                <a href="/rules">Rules</a>
+            </nav>
+        </div>
 
-    {% block content %}{% endblock %}
-</div>
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
 </body>
 </html>

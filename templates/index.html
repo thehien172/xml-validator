@@ -2,50 +2,204 @@
 {% block title %}Kiểm tra XML{% endblock %}
 
 {% block content %}
-<h1>Kiểm tra XML bệnh nhân</h1>
-
-<div class="form-box">
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="xml_file" accept=".xml">
-        <button type="submit" class="btn btn-primary">Kiểm tra</button>
-    </form>
+<div class="page-header">
+    <h1 class="page-title">Kiểm tra XML bệnh nhân</h1>
+    <div class="page-subtitle">
+        Chọn nguồn dữ liệu để kiểm tra: lấy trực tiếp từ hệ thống hoặc tải file XML lên thủ công.
+    </div>
 </div>
 
 {% if error %}
-    <div style="color:red; margin-bottom:15px;">{{ error }}</div>
+<div class="alert alert-error">{{ error }}</div>
 {% endif %}
 
-<h2>Kết quả kiểm tra theo hồ sơ bệnh nhân</h2>
+{% set selected_mode = request.form.get('mode', 'l2') %}
+{% set selected_system_id = request.form.get('he_thong_id', '') %}
+{% set selected_unit_id = request.form.get('don_vi_id', '') %}
+{% set selected_tu_ngay = request.form.get('tu_ngay', '') %}
+{% set selected_den_ngay = request.form.get('den_ngay', '') %}
 
-{% if hoso_results %}
-<table border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse;">
-    <thead style="background:#f5f5f5;">
-        <tr>
-            <th>Mã bệnh nhân</th>
-            <th>Họ tên</th>
-            <th>Mức độ</th>
-            <th>Nội dung cảnh báo</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for hoso in hoso_results %}
-            {% if hoso.warnings %}
+<div class="card">
+    <h2 class="card-title">Kiểm tra từ hệ thống</h2>
+    <div class="card-subtitle">
+        Trước mắt dùng cho luồng L2. Chọn hệ thống, đơn vị và khoảng thời gian để lấy XML về kiểm tra.
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="mode" value="l2">
+
+        <div class="grid">
+            <div class="col-6">
+                <label for="he_thong_select">Hệ thống</label>
+                <select name="he_thong_id" id="he_thong_select" required>
+                    <option value="">-- Chọn hệ thống --</option>
+                    {% for s in systems %}
+                    <option value="{{ s.id }}" {% if selected_system_id %} {% if selected_system_id|string==s.id|string
+                        %}selected{% endif %} {% else %} {% if s.ten_he_thong=='L2' %}selected{% endif %} {% endif %}>
+                        {{ s.ten_he_thong }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-6">
+                <label for="don_vi_select">Đơn vị</label>
+                <select name="don_vi_id" id="don_vi_select" required>
+                    <option value="">-- Chọn đơn vị --</option>
+                    {% for u in units %}
+                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if
+                        selected_unit_id|string==u.id|string %}selected{% endif %}>
+                        {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-3">
+                <label for="tu_ngay">Từ ngày</label>
+                <input type="date" id="tu_ngay" name="tu_ngay" value="{{ selected_tu_ngay }}" required>
+            </div>
+
+            <div class="col-3">
+                <label for="den_ngay">Đến ngày</label>
+                <input type="date" id="den_ngay" name="den_ngay" value="{{ selected_den_ngay }}" required>
+            </div>
+
+            <div class="col-6" style="display:flex; align-items:end;">
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Kiểm tra từ hệ thống</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Kiểm tra từ file XML</h2>
+    <div class="card-subtitle">
+        Dùng để test nhanh hoặc kiểm tra thủ công khi chưa lấy dữ liệu trực tiếp từ hệ thống.
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="mode" value="file">
+
+        <div class="grid">
+            <div class="col-8">
+                <label for="xml_file">Chọn file XML</label>
+                <input type="file" id="xml_file" name="xml_file" accept=".xml" required>
+            </div>
+
+            <div class="col-4" style="display:flex; align-items:end;">
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Kiểm tra từ file</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Kết quả kiểm tra theo hồ sơ bệnh nhân</h2>
+    <div class="card-subtitle" style="margin-bottom: 12px;">
+        Tổng XML đã đọc:
+        <strong>{{ stats.total_xml_read if stats else 0 }}</strong>
+        |
+        Tổng hồ sơ đã đọc:
+        <strong>{{ stats.total_hoso_read if stats else 0 }}</strong>
+        |
+        Số hồ sơ lỗi/cảnh báo:
+        <strong>{{ stats.error_hoso_count if stats else 0 }}</strong>
+    </div>
+    {% if hoso_results %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 70px;">STT</th>
+                    <th style="width: 180px;">Mã bệnh nhân</th>
+                    <th style="width: 240px;">Họ tên</th>
+                    <th style="width: 130px;">Mức độ</th>
+                    <th>Nội dung cảnh báo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set stt = namespace(value=1) %}
+                {% for hoso in hoso_results %}
+                {% if hoso.warnings %}
+                {% set warning_count = hoso.warnings|length %}
                 {% for item in hoso.warnings %}
-                    <tr>
-                        <td>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</td>
-                        <td>{{ hoso.patient_name if hoso.patient_name else '(không có)' }}</td>
-                        <td>
-                            <span class="badge">{{ item.severity }}</span>
-                        </td>
-                        <td>{{ item.message }}</td>
-                    </tr>
-                {% endfor %}
-            {% endif %}
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-    <p>Chưa có dữ liệu kiểm tra.</p>
-{% endif %}
+                <tr>
+                    {% if loop.first %}
+                    <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
+                        {{ stt.value }}
+                    </td>
+                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                        <strong>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</strong>
+                    </td>
+                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                        {{ hoso.patient_name if hoso.patient_name else '(không có)' }}
+                    </td>
+                    {% endif %}
 
+                    <td>
+                        {% set severity = (item.severity or '')|upper %}
+                        {% if severity == 'ERROR' %}
+                        <span class="badge badge-error">{{ item.severity }}</span>
+                        {% elif severity == 'WARNING' %}
+                        <span class="badge badge-warning">{{ item.severity }}</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ item.severity }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.message }}</td>
+                </tr>
+                {% endfor %}
+                {% set stt.value = stt.value + 1 %}
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        Chưa có dữ liệu kiểm tra. Hãy chọn nguồn dữ liệu rồi bấm nút kiểm tra.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    (function () {
+        const systemSelect = document.getElementById("he_thong_select");
+        const unitSelect = document.getElementById("don_vi_select");
+
+        function filterUnits() {
+            const selectedSystemId = systemSelect.value;
+            const options = unitSelect.querySelectorAll("option");
+            const currentUnitValue = unitSelect.value;
+            let hasVisibleSelected = false;
+
+            options.forEach(function (option, index) {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+
+                const systemId = option.getAttribute("data-system");
+                const visible = !selectedSystemId || systemId === selectedSystemId;
+                option.hidden = !visible;
+
+                if (visible && option.value === currentUnitValue) {
+                    hasVisibleSelected = true;
+                }
+            });
+
+            if (!hasVisibleSelected) {
+                unitSelect.value = "";
+            }
+        }
+
+        systemSelect.addEventListener("change", filterUnits);
+        filterUnits();
+    })();
+</script>
 {% endblock %}

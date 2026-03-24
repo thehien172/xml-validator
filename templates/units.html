@@ -2,16 +2,22 @@
 {% block title %}Đơn vị{% endblock %}
 
 {% block content %}
-<h1>Quản trị đơn vị</h1>
+<div class="page-header">
+    <h1 class="page-title">Quản trị đơn vị</h1>
+    <div class="page-subtitle">Quản lý đơn vị theo hệ thống và cấu hình tài khoản tích hợp.</div>
+</div>
 
-<div class="filter-box">
+<div class="card">
+    <h2 class="card-title">Bộ lọc</h2>
+
     <form method="GET">
-        <div class="row">
-            <div class="col">
+        <div class="grid">
+            <div class="col-6">
                 <label>Tìm kiếm</label>
                 <input type="text" name="keyword" value="{{ keyword }}" placeholder="62058, BV YHCT, L2...">
             </div>
-            <div class="col">
+
+            <div class="col-6">
                 <label>Lọc theo hệ thống</label>
                 <select name="he_thong_id">
                     <option value="">-- Tất cả --</option>
@@ -24,37 +30,51 @@
             </div>
         </div>
 
-        <button class="btn btn-primary" type="submit">Tìm</button>
-        <a href="/units" class="btn">Xóa lọc</a>
-        <a href="/units/create" class="btn">+ Thêm đơn vị</a>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Tìm</button>
+            <a href="/units" class="btn btn-secondary">Xóa lọc</a>
+            <a href="/units/create" class="btn btn-primary">+ Thêm đơn vị</a>
+        </div>
     </form>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Mã đơn vị</th>
-            <th>Tên đơn vị</th>
-            <th>Hệ thống</th>
-            <th>Thao tác</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for x in items %}
-        <tr>
-            <td>{{ x.id }}</td>
-            <td>{{ x.ma_don_vi }}</td>
-            <td>{{ x.ten_don_vi }}</td>
-            <td>{{ x.he_thong.ten_he_thong }}</td>
-            <td class="actions">
-                <a class="btn" href="/units/{{ x.id }}/edit">Sửa</a>
-                <form class="inline" method="POST" action="/units/{{ x.id }}/delete" onsubmit="return confirm('Xóa đơn vị này?');">
-                    <button class="btn btn-danger" type="submit">Xóa</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="card">
+    <h2 class="card-title">Danh sách đơn vị</h2>
+
+    {% if items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 90px;">ID</th>
+                        <th style="width: 150px;">Mã đơn vị</th>
+                        <th>Tên đơn vị</th>
+                        <th style="width: 140px;">Hệ thống</th>
+                        <th style="width: 180px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in items %}
+                    <tr>
+                        <td><strong>{{ x.id }}</strong></td>
+                        <td>{{ x.ma_don_vi }}</td>
+                        <td>{{ x.ten_don_vi }}</td>
+                        <td>{{ x.he_thong.ten_he_thong }}</td>
+                        <td>
+                            <div class="actions">
+                                <a class="btn btn-secondary" href="/units/{{ x.id }}/edit">Sửa</a>
+                                <form class="inline" method="POST" action="/units/{{ x.id }}/delete" onsubmit="return confirm('Xóa đơn vị này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">Chưa có dữ liệu đơn vị.</div>
+    {% endif %}
+</div>
 {% endblock %}

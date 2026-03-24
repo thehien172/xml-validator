@@ -98,7 +98,9 @@ def create_unit():
         item = DonVi(
             ma_don_vi=request.form.get("ma_don_vi", "").strip(),
             ten_don_vi=request.form.get("ten_don_vi", "").strip(),
-            he_thong_id=int(request.form.get("he_thong_id"))
+            he_thong_id=int(request.form.get("he_thong_id")),
+            api_username=request.form.get("api_username"),
+            api_password=request.form.get("api_password"),
         )
         db.session.add(item)
         db.session.commit()
@@ -116,6 +118,8 @@ def edit_unit(item_id):
         item.ma_don_vi = request.form.get("ma_don_vi", "").strip()
         item.ten_don_vi = request.form.get("ten_don_vi", "").strip()
         item.he_thong_id = int(request.form.get("he_thong_id"))
+        item.api_username = request.form.get("api_username")
+        item.api_password = request.form.get("api_password")
         db.session.commit()
         return redirect(url_for("unit_bp.list_units"))
 

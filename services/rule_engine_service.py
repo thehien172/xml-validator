@@ -247,9 +247,15 @@ def run_validation(tree):
 
     hoso_nodes = get_hoso_nodes(tree)
     result_by_hoso = []
+    total_xml_read = 0
 
     for hoso_index, hoso_node in enumerate(hoso_nodes, start=1):
         xml_data_map = build_xml_data_map_for_hoso(hoso_node, xml_configs)
+
+        # Đếm số XML thực tế đã đọc trong hồ sơ này
+        for xml_code, xml_info in xml_data_map.items():
+            total_xml_read += len(xml_info.get("items", []))
+
         hoso_info = get_hoso_identity(xml_data_map, hoso_index)
         warnings = validate_one_hoso(xml_data_map, active_rules)
 
@@ -260,4 +266,10 @@ def run_validation(tree):
                 "warnings": warnings
             })
 
-    return result_by_hoso
+    stats = {
+        "total_xml_read": total_xml_read,
+        "total_hoso_read": len(hoso_nodes),
+        "error_hoso_count": len(result_by_hoso)
+    }
+
+    return result_by_hoso, stats

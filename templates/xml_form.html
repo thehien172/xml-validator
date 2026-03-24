@@ -2,21 +2,28 @@
 {% block title %}{% if item %}Sửa XML{% else %}Thêm XML{% endif %}{% endblock %}
 
 {% block content %}
-<h1>{% if item %}Sửa XML{% else %}Thêm XML{% endif %}</h1>
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa XML{% else %}Thêm XML{% endif %}</h1>
+    <div class="page-subtitle">Khai báo danh mục XML và list path dùng để tách danh sách item khi validate.</div>
+</div>
 
-<div class="form-box">
+<div class="card">
+    <h2 class="card-title">Thông tin XML</h2>
+
     <form method="POST">
         <label>Mã XML</label>
         <input type="text" name="ma_xml" required value="{{ item.ma_xml if item else '' }}" placeholder="XML1">
 
         <label>Tên XML</label>
-        <input type="text" name="ten_xml" required value="{{ item.ten_xml if item else '' }}">
+        <input type="text" name="ten_xml" required value="{{ item.ten_xml if item else '' }}" placeholder="XML1 - Thông tin tổng hợp">
 
         <label>List path</label>
         <input type="text" name="list_path" required value="{{ item.list_path if item else '' }}" placeholder="./TONG_HOP">
 
-        <button type="submit" class="btn btn-primary">Lưu</button>
-        <a href="/xmls" class="btn">Quay lại</a>
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/xmls" class="btn btn-secondary">Quay lại</a>
+        </div>
     </form>
 </div>
 {% endblock %}
