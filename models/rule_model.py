@@ -49,6 +49,7 @@ class RuleDetail(db.Model):
     field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[field_id])
     condition = db.relationship("DanhMucDieuKien")
     compare_field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[compare_field_id])
-
+    date_part = db.Column(db.String(50), nullable=True)
+    
     def __repr__(self):
         return f"<RuleDetail rule_id={self.rule_id} field_id={self.field_id}>"

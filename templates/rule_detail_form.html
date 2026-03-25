@@ -10,13 +10,19 @@
 <div class="card">
     <h2 class="card-title">Thông tin detail</h2>
 
+    {% if error %}
+    <div class="alert alert-danger" style="margin-bottom: 15px;">
+        {{ error }}
+    </div>
+    {% endif %}
+
     <form method="POST" id="rule-detail-form">
         <div class="grid">
             <div class="col-6">
                 <label>Role</label>
                 <select name="condition_role" required>
-                    <option value="TRIGGER" {% if item and item.condition_role == 'TRIGGER' %}selected{% endif %}>TRIGGER</option>
-                    <option value="VALIDATE" {% if not item or item.condition_role == 'VALIDATE' %}selected{% endif %}>VALIDATE</option>
+                    <option value="TRIGGER" {% if item and item.condition_role=='TRIGGER' %}selected{% endif %}>TRIGGER</option>
+                    <option value="VALIDATE" {% if not item or item.condition_role=='VALIDATE' %}selected{% endif %}>VALIDATE</option>
                 </select>
             </div>
 
@@ -29,46 +35,66 @@
         <div class="grid">
             <div class="col-6">
                 <label>XML nguồn</label>
-                <select name="xml_id" id="xml_id" onchange="this.form.submit()" required>
+                <select name="xml_id" id="xml_id" required>
                     <option value="">-- Chọn XML --</option>
                     {% for x in xmls %}
-                        <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int == x.id %}selected{% endif %}>
-                            {{ x.ma_xml }} - {{ x.ten_xml }}
-                        </option>
+                    <option value="{{ x.id }}" {% if selected_xml_id and selected_xml_id|int==x.id %}selected{% endif %}>
+                        {{ x.ma_xml }} - {{ x.ten_xml }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="col-6">
                 <label>Field nguồn</label>
-                <select name="field_id" required>
+                <select name="field_id" id="field_id" required>
                     <option value="">-- Chọn field --</option>
                     {% for f in fields %}
-                        <option value="{{ f.id }}" {% if item and item.field_id == f.id %}selected{% endif %}>
-                            {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
-                        </option>
+                    <option
+                        value="{{ f.id }}"
+                        data-type="{{ f.data_type or '' }}"
+                        {% if item and item.field_id==f.id %}selected{% endif %}>
+                        {{ f.ten_truong }} | {% if f.data_type %} ({{ f.data_type }}){% endif %}
+                    </option>
                     {% endfor %}
                 </select>
+
+                <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span id="selected_field_type_badge"
+                        style="display:none; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; font-weight:600;">
+                    </span>
+
+                    <span id="selected_field_type_hint"
+                        style="display:none; font-size:12px; color:#6b7280;">
+                    </span>
+                </div>
             </div>
         </div>
 
         <div class="grid">
             <div class="col-6">
                 <label>Condition</label>
-                <select name="condition_id" required>
+                <select name="condition_id" id="condition_id" required>
                     {% for c in conditions %}
-                        <option value="{{ c.id }}" {% if item and item.condition_id == c.id %}selected{% endif %}>
-                            {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
-                        </option>
+                    <option
+                        value="{{ c.id }}"
+                        data-code="{{ c.ma_dieu_kien }}"
+                        {% if item and item.condition_id==c.id %}selected{% endif %}>
+                        {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
+                    </option>
                     {% endfor %}
                 </select>
+
+                <div id="condition_hint"
+                    style="display:none; margin-top:8px; font-size:12px; color:#6b7280;">
+                </div>
             </div>
 
             <div class="col-6">
                 <label>Kiểu so sánh</label>
                 <select name="compare_mode" id="compare_mode">
-                    <option value="VALUE" {% if not item or item.compare_mode == 'VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
-                    <option value="FIELD" {% if item and item.compare_mode == 'FIELD' %}selected{% endif %}>So sánh với field khác</option>
+                    <option value="VALUE" {% if not item or item.compare_mode=='VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
+                    <option value="FIELD" {% if item and item.compare_mode=='FIELD' %}selected{% endif %}>So sánh với field khác</option>
                 </select>
             </div>
         </div>
@@ -76,7 +102,36 @@
         <div class="grid" id="value_compare_group">
             <div class="col-12">
                 <label>Giá trị so sánh</label>
-                <input type="text" name="gia_tri" id="gia_tri" value="{{ item.gia_tri if item and item.gia_tri else '' }}" placeholder="Ví dụ: 12 hoặc A,B,C">
+                <input
+                    type="text"
+                    name="gia_tri"
+                    id="gia_tri"
+                    value="{{ item.gia_tri if item and item.gia_tri else '' }}"
+                    placeholder="Ví dụ: 12 hoặc A,B,C">
+
+                <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span id="value_format_badge"
+                        style="display:none; padding:4px 10px; border-radius:999px; background:#ecfeff; color:#155e75; font-size:12px; font-weight:600;">
+                    </span>
+
+                    <span id="value_format_hint"
+                        style="display:none; font-size:12px; color:#6b7280;">
+                    </span>
+                </div>
+
+                <div class="form-group" style="margin-top:12px;">
+                    <label>Date part (nếu field là DATE)</label>
+                    <select name="date_part" id="date_part" class="form-control">
+                        <option value="">-- Không dùng --</option>
+                        <option value="DAY_OF_WEEK" {% if item and item.date_part=="DAY_OF_WEEK" %}selected{% endif %}>Thứ trong tuần</option>
+                        <option value="DAY" {% if item and item.date_part=="DAY" %}selected{% endif %}>Ngày</option>
+                        <option value="MONTH" {% if item and item.date_part=="MONTH" %}selected{% endif %}>Tháng</option>
+                        <option value="YEAR" {% if item and item.date_part=="YEAR" %}selected{% endif %}>Năm</option>
+                        <option value="HOUR" {% if item and item.date_part=="HOUR" %}selected{% endif %}>Giờ</option>
+                    </select>
+
+                    <div id="date_part_hint" style="display:none; margin-top:8px; font-size:12px; color:#6b7280;"></div>
+                </div>
             </div>
         </div>
 
@@ -84,12 +139,12 @@
             <div class="grid">
                 <div class="col-6">
                     <label>XML so sánh</label>
-                    <select name="compare_xml_id" id="compare_xml_id" onchange="this.form.submit()">
+                    <select name="compare_xml_id" id="compare_xml_id">
                         <option value="">-- Chọn XML so sánh --</option>
                         {% for x in xmls %}
-                            <option value="{{ x.id }}" {% if compare_xml_id and compare_xml_id|int == x.id %}selected{% endif %}>
-                                {{ x.ma_xml }} - {{ x.ten_xml }}
-                            </option>
+                        <option value="{{ x.id }}" {% if compare_xml_id and compare_xml_id|int==x.id %}selected{% endif %}>
+                            {{ x.ma_xml }} - {{ x.ten_xml }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -99,9 +154,12 @@
                     <select name="compare_field_id" id="compare_field_id">
                         <option value="">-- Chọn field so sánh --</option>
                         {% for f in compare_fields %}
-                            <option value="{{ f.id }}" {% if item and item.compare_field_id == f.id %}selected{% endif %}>
-                                {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
-                            </option>
+                        <option
+                            value="{{ f.id }}"
+                            data-type="{{ f.data_type or '' }}"
+                            {% if item and item.compare_field_id==f.id %}selected{% endif %}>
+                            {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}{% if f.data_type %} ({{ f.data_type }}){% endif %}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -121,8 +179,43 @@
         const valueGroup = document.getElementById("value_compare_group");
         const fieldGroup = document.getElementById("field_compare_group");
         const giaTriInput = document.getElementById("gia_tri");
+
+        const xmlSelect = document.getElementById("xml_id");
+        const fieldSelect = document.getElementById("field_id");
+
+        const conditionSelect = document.getElementById("condition_id");
+        const datePartSelect = document.getElementById("date_part");
+
         const compareXmlSelect = document.getElementById("compare_xml_id");
         const compareFieldSelect = document.getElementById("compare_field_id");
+
+        const fieldTypeBadge = document.getElementById("selected_field_type_badge");
+        const fieldTypeHint = document.getElementById("selected_field_type_hint");
+        const valueFormatBadge = document.getElementById("value_format_badge");
+        const valueFormatHint = document.getElementById("value_format_hint");
+        const conditionHint = document.getElementById("condition_hint");
+        const datePartHint = document.getElementById("date_part_hint");
+
+        const initialFieldId = "{{ item.field_id if item and item.field_id else '' }}";
+        const initialCompareFieldId = "{{ item.compare_field_id if item and item.compare_field_id else '' }}";
+
+        function getSelectedOption(selectEl) {
+            return selectEl.options[selectEl.selectedIndex] || null;
+        }
+
+        function getSelectedFieldType() {
+            const opt = getSelectedOption(fieldSelect);
+            return opt ? (opt.dataset.type || "").trim().toUpperCase() : "";
+        }
+
+        function getSelectedConditionCode() {
+            const opt = getSelectedOption(conditionSelect);
+            return opt ? (opt.dataset.code || "").trim().toUpperCase() : "";
+        }
+
+        function isRangeCondition(code) {
+            return code === "BETWEEN" || code === "NOT_BETWEEN";
+        }
 
         function toggleCompareMode() {
             const mode = compareMode.value;
@@ -130,20 +223,146 @@
             if (mode === "FIELD") {
                 valueGroup.style.display = "none";
                 fieldGroup.style.display = "block";
-
                 giaTriInput.value = "";
             } else {
                 valueGroup.style.display = "block";
-                fieldGroup.style.display = "block";
-
-                compareXmlSelect.value = "";
-                compareFieldSelect.value = "";
                 fieldGroup.style.display = "none";
+                compareXmlSelect.value = "";
+                compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
             }
         }
 
+        function buildOptionText(item) {
+            return `${item.xml_code} | ${item.ten_truong} | ${item.xml_path}${item.data_type ? ` (${item.data_type})` : ""}`;
+        }
+
+        function updateSelectedFieldInfo() {
+            const fieldType = getSelectedFieldType();
+
+            if (!fieldType) {
+                fieldTypeBadge.style.display = "none";
+                fieldTypeHint.style.display = "none";
+                return;
+            }
+        }
+
+        function updateDatePartGuide() {
+            const fieldType = getSelectedFieldType();
+            const datePart = (datePartSelect.value || "").toUpperCase();
+
+            if (fieldType !== "DATE") {
+                datePartHint.style.display = "none";
+                return;
+            }
+
+            datePartHint.style.display = "block";
+            datePartHint.textContent = hint;
+        }
+
+        async function loadFieldsByXml(xmlId, targetSelect, selectedValue = "") {
+            const emptyLabel = targetSelect.id === "compare_field_id"
+                ? "-- Chọn field so sánh --"
+                : "-- Chọn field --";
+
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            if (!xmlId) {
+                targetSelect.innerHTML = `<option value="">${emptyLabel}</option>`;
+                if (targetSelect.id === "field_id") {
+                    updateSelectedFieldInfo();
+                    updateDatePartGuide();
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`/rules/api/fields-by-xml?xml_id=${encodeURIComponent(xmlId)}`, {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Không tải được danh sách field");
+                }
+
+                const data = await response.json();
+
+                targetSelect.innerHTML = `<option value="">${emptyLabel}</option>`;
+
+                data.forEach(function (f) {
+                    const opt = document.createElement("option");
+                    opt.value = f.id;
+                    opt.textContent = buildOptionText(f);
+                    opt.dataset.type = f.data_type || "";
+
+                    if (selectedValue && String(selectedValue) === String(f.id)) {
+                        opt.selected = true;
+                    }
+
+                    targetSelect.appendChild(opt);
+                });
+
+                if (targetSelect.id === "field_id") {
+                    updateSelectedFieldInfo();
+                    updateDatePartGuide();
+                }
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải field --</option>';
+                console.error(err);
+
+                if (targetSelect.id === "field_id") {
+                    updateSelectedFieldInfo();
+                    updateDatePartGuide();
+                }
+            }
+        }
+
+        xmlSelect.addEventListener("change", function () {
+            loadFieldsByXml(this.value, fieldSelect);
+        });
+
+        compareXmlSelect.addEventListener("change", function () {
+            loadFieldsByXml(this.value, compareFieldSelect);
+        });
+
+        fieldSelect.addEventListener("change", function () {
+            updateSelectedFieldInfo();
+            updateDatePartGuide();
+        });
+
+        datePartSelect.addEventListener("change", function () {
+            updateDatePartGuide();
+        });
+
         compareMode.addEventListener("change", toggleCompareMode);
+
+        document.getElementById("rule-detail-form").addEventListener("submit", function (e) {
+            if (compareMode.value !== "VALUE") {
+                return;
+            }
+
+            const conditionCode = getSelectedConditionCode();
+            const value = (giaTriInput.value || "").trim();
+
+            if (isRangeCondition(conditionCode) && !value.includes("-")) {
+                e.preventDefault();
+                alert("Condition trong khoảng yêu cầu giá trị có dấu '-', ví dụ: 07-17 hoặc 18-06.");
+                giaTriInput.focus();
+            }
+        });
+
         toggleCompareMode();
+        updateSelectedFieldInfo();
+        updateDatePartGuide();
+
+        if (xmlSelect.value && fieldSelect.options.length <= 1) {
+            loadFieldsByXml(xmlSelect.value, fieldSelect, initialFieldId);
+        }
+
+        if (compareXmlSelect.value && compareFieldSelect.options.length <= 1) {
+            loadFieldsByXml(compareXmlSelect.value, compareFieldSelect, initialCompareFieldId);
+        }
     })();
 </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+from datetime import datetime
 from models import DanhMucXml, Rule
 from services.xml_parser_service import (
     get_hoso_nodes,
@@ -8,6 +8,55 @@ from services.xml_parser_service import (
     get_item_label,
     get_hoso_identity
 )
+
+
+def parse_date(value):
+    if not value:
+        return None
+
+    value = str(value).strip()
+
+    formats = [
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%Y%m%d%H%M",
+        "%Y%m%d",
+        "%Y%m%d%H%M%S"
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(value, fmt)
+        except Exception:
+            continue
+
+    return None
+
+
+def extract_date_part(value, part):
+    dt = parse_date(value)
+    if not dt:
+        return None
+
+    if part == "DAY_OF_WEEK":
+        # 2-8 (Mon=2 ... Sun=8)
+        return dt.weekday() + 2
+
+    if part == "DAY":
+        return dt.day
+
+    if part == "MONTH":
+        return dt.month
+
+    if part == "YEAR":
+        return dt.year
+
+    if part == "HOUR":
+        return dt.hour
+
+    return None
 
 
 def normalize_value(value):
@@ -23,6 +72,63 @@ def normalize_list(values):
         if nv is not None and nv != "":
             result.append(nv)
     return result
+
+
+def try_parse_number(value):
+    if value is None:
+        return None
+
+    text = str(value).strip().replace(",", ".")
+    if text == "":
+        return None
+
+    try:
+        return float(text)
+    except Exception:
+        return None
+
+
+def split_range_value(expected_value):
+    """
+    Tách giá trị dạng:
+    - 07-17
+    - 18-06
+    - 2-6
+    """
+    if expected_value is None:
+        return None, None
+
+    text = normalize_value(expected_value)
+    if not text or "-" not in text:
+        return None, None
+
+    left, right = text.split("-", 1)
+    return normalize_value(left), normalize_value(right)
+
+
+def is_between_value(actual_value, expected_value):
+    """
+    Hỗ trợ so sánh trong khoảng:
+    - dạng số bình thường: 7-17 => 8, 12, 17 là đúng
+    - dạng vòng qua 0: 18-06 => 18..23 hoặc 0..6 là đúng
+    """
+    actual_num = try_parse_number(actual_value)
+    start_raw, end_raw = split_range_value(expected_value)
+
+    if actual_num is None or start_raw is None or end_raw is None:
+        return False
+
+    start_num = try_parse_number(start_raw)
+    end_num = try_parse_number(end_raw)
+
+    if start_num is None or end_num is None:
+        return False
+
+    if start_num <= end_num:
+        return start_num <= actual_num <= end_num
+
+    # khoảng vòng, ví dụ 18-06
+    return actual_num >= start_num or actual_num <= end_num
 
 
 def check_condition(actual_value, condition_code, expected_value=None):
@@ -74,6 +180,12 @@ def check_condition(actual_value, condition_code, expected_value=None):
         values = [v.strip() for v in expected_value.split(",") if v.strip()]
         return actual_value in values
 
+    if condition_code == "BETWEEN":
+        return is_between_value(actual_value, expected_value)
+
+    if condition_code == "NOT_BETWEEN":
+        return not is_between_value(actual_value, expected_value)
+
     return False
 
 
@@ -109,6 +221,10 @@ def get_expected_value_for_detail(detail, xml_data_map, current_item):
 
 def evaluate_detail_on_item(detail, xml_data_map, item):
     actual_value = get_value_from_item(item, detail.field.xml_path)
+
+    if detail.date_part:
+        actual_value = extract_date_part(actual_value, detail.date_part)
+
     expected_value = get_expected_value_for_detail(detail, xml_data_map, item)
 
     return check_condition(
@@ -148,7 +264,6 @@ def validate_one_hoso(xml_data_map, active_rules):
         if not validate_details:
             continue
 
-        # Gom validate theo XML nguồn
         validate_group_by_xml = defaultdict(list)
         for detail in validate_details:
             validate_group_by_xml[detail.field.xml.ma_xml].append(detail)
@@ -160,9 +275,6 @@ def validate_one_hoso(xml_data_map, active_rules):
             if not source_items:
                 continue
 
-            # Tách trigger:
-            # - local trigger: cùng XML với validate -> check trên từng item
-            # - external trigger: khác XML -> check toàn hồ sơ
             local_triggers = []
             external_triggers = []
 
@@ -173,7 +285,6 @@ def validate_one_hoso(xml_data_map, active_rules):
                 else:
                     external_triggers.append(trigger)
 
-            # Nếu có trigger ngoài XML mà không đạt -> bỏ qua toàn bộ validate group này
             external_trigger_pass = True
             for trigger in external_triggers:
                 if not evaluate_trigger_any_item(trigger, xml_data_map):
@@ -183,9 +294,7 @@ def validate_one_hoso(xml_data_map, active_rules):
             if not external_trigger_pass:
                 continue
 
-            # Chạy từng item của XML nguồn
             for index, item in enumerate(source_items, start=1):
-                # local trigger phải pass trên chính item hiện tại
                 local_trigger_pass = True
                 for trigger in local_triggers:
                     if not evaluate_detail_on_item(trigger, xml_data_map, item):
@@ -208,9 +317,16 @@ def validate_one_hoso(xml_data_map, active_rules):
                                 f"{detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
                             )
                         elif detail.gia_tri:
-                            compare_text = f"So sánh với giá trị {detail.gia_tri}"
+                            if detail.condition.ma_dieu_kien == "BETWEEN":
+                                compare_text = f"Giá trị phải nằm trong khoảng {detail.gia_tri}"
+                            elif detail.condition.ma_dieu_kien == "NOT_BETWEEN":
+                                compare_text = f"Giá trị không được nằm trong khoảng {detail.gia_tri}"
+                            else:
+                                compare_text = f"So sánh với giá trị {detail.gia_tri}"
 
                         actual_value = get_value_from_item(item, detail.field.xml_path)
+                        if detail.date_part:
+                            actual_value = extract_date_part(actual_value, detail.date_part)
 
                         validate_failed_fields.append({
                             "field_name": detail.field.ten_truong,
@@ -252,7 +368,6 @@ def run_validation(tree):
     for hoso_index, hoso_node in enumerate(hoso_nodes, start=1):
         xml_data_map = build_xml_data_map_for_hoso(hoso_node, xml_configs)
 
-        # Đếm số XML thực tế đã đọc trong hồ sơ này
         for xml_code, xml_info in xml_data_map.items():
             total_xml_read += len(xml_info.get("items", []))
 

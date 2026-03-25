@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 from sqlalchemy import or_
 
 from models import (
@@ -12,6 +12,33 @@ from models import (
 )
 
 rule_bp = Blueprint("rule_bp", __name__, url_prefix="/rules")
+
+
+@rule_bp.route("/api/fields-by-xml", methods=["GET"])
+def get_fields_by_xml():
+    xml_id = request.args.get("xml_id", type=int)
+
+    if not xml_id:
+        return jsonify([])
+
+    fields = (
+        DanhMucTruongDuLieu.query
+        .filter_by(xml_id=xml_id)
+        .order_by(DanhMucTruongDuLieu.id.asc())
+        .all()
+    )
+
+    result = []
+    for f in fields:
+        result.append({
+            "id": f.id,
+            "ten_truong": f.ten_truong,
+            "xml_path": f.xml_path,
+            "xml_code": f.xml.ma_xml if f.xml else "",
+            "data_type": (f.data_type or "STRING").upper()
+        })
+
+    return jsonify(result)
 
 
 @rule_bp.route("/", methods=["GET"])
@@ -154,8 +181,8 @@ def create_rule_detail(rule_id):
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
 
-    selected_xml_id = (request.args.get("xml_id") or request.form.get("xml_id") or "").strip()
-    compare_xml_id = (request.args.get("compare_xml_id") or request.form.get("compare_xml_id") or "").strip()
+    selected_xml_id = (request.form.get("xml_id") or "").strip()
+    compare_xml_id = (request.form.get("compare_xml_id") or "").strip()
 
     selected_xml_id_int = to_int_or_none(selected_xml_id)
     compare_xml_id_int = to_int_or_none(compare_xml_id)
@@ -188,6 +215,7 @@ def create_rule_detail(rule_id):
         compare_field_id = to_int_or_none(request.form.get("compare_field_id"))
         gia_tri = (request.form.get("gia_tri") or "").strip() or None
         condition_role = (request.form.get("condition_role") or "VALIDATE").strip()
+        date_part = (request.form.get("date_part") or "").strip() or None
 
         if selected_xml_id_int is None:
             error = "Bạn chưa chọn XML nguồn."
@@ -199,8 +227,6 @@ def create_rule_detail(rule_id):
             error = "Bạn chưa chọn XML so sánh."
         elif compare_mode == "FIELD" and compare_field_id is None:
             error = "Bạn chưa chọn field so sánh."
-        elif compare_mode == "VALUE" and not gia_tri:
-            error = "Bạn chưa nhập giá trị so sánh."
         else:
             detail = RuleDetail(
                 rule_id=rule.id,
@@ -210,7 +236,8 @@ def create_rule_detail(rule_id):
                 condition_role=condition_role,
                 sort_order=sort_order,
                 compare_mode=compare_mode,
-                compare_field_id=compare_field_id if compare_mode == "FIELD" else None
+                compare_field_id=compare_field_id if compare_mode == "FIELD" else None,
+                date_part=date_part
             )
             db.session.add(detail)
             db.session.commit()
@@ -229,6 +256,7 @@ def create_rule_detail(rule_id):
         error=error
     )
 
+
 @rule_bp.route("/details/<int:detail_id>/edit", methods=["GET", "POST"])
 def edit_rule_detail(detail_id):
     item = RuleDetail.query.get_or_404(detail_id)
@@ -237,14 +265,12 @@ def edit_rule_detail(detail_id):
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
 
     selected_xml_id = (
-        request.args.get("xml_id")
-        or request.form.get("xml_id")
+        request.form.get("xml_id")
         or str(item.field.xml_id)
     ).strip()
 
     compare_xml_id = (
-        request.args.get("compare_xml_id")
-        or request.form.get("compare_xml_id")
+        request.form.get("compare_xml_id")
         or (str(item.compare_field.xml_id) if item.compare_field else "")
     ).strip()
 
@@ -279,6 +305,7 @@ def edit_rule_detail(detail_id):
         compare_field_id = to_int_or_none(request.form.get("compare_field_id"))
         gia_tri = (request.form.get("gia_tri") or "").strip() or None
         condition_role = (request.form.get("condition_role") or "VALIDATE").strip()
+        date_part = (request.form.get("date_part") or "").strip() or None
 
         if selected_xml_id_int is None:
             error = "Bạn chưa chọn XML nguồn."
@@ -290,8 +317,6 @@ def edit_rule_detail(detail_id):
             error = "Bạn chưa chọn XML so sánh."
         elif compare_mode == "FIELD" and compare_field_id is None:
             error = "Bạn chưa chọn field so sánh."
-        elif compare_mode == "VALUE" and not gia_tri:
-            error = "Bạn chưa nhập giá trị so sánh."
         else:
             item.field_id = field_id
             item.condition_id = condition_id
@@ -300,6 +325,7 @@ def edit_rule_detail(detail_id):
             item.sort_order = sort_order
             item.compare_mode = compare_mode
             item.compare_field_id = compare_field_id if compare_mode == "FIELD" else None
+            item.date_part = date_part
 
             db.session.commit()
             return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
@@ -317,6 +343,7 @@ def edit_rule_detail(detail_id):
         error=error
     )
 
+
 @rule_bp.route("/details/<int:detail_id>/delete", methods=["POST"])
 def delete_rule_detail(detail_id):
     item = RuleDetail.query.get_or_404(detail_id)
@@ -324,6 +351,7 @@ def delete_rule_detail(detail_id):
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for("rule_bp.list_rule_details", rule_id=rule_id))
+
 
 def to_int_or_none(value):
     value = (value or "").strip()

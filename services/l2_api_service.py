@@ -398,7 +398,14 @@ def l2_get_hoso_list(don_vi, tu_ngay, den_ngay):
     return rows
 
 
+
 def build_export_xml_params(don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, ds_malk):
+    tu_ngay_dt = datetime.strptime(tu_ngay_ddmmyyyy, "%d/%m/%Y")
+
+    qd3176 = DEFAULT_QD3176
+    if tu_ngay_dt.month < 2:
+        qd3176 = 0
+
     return {
         "LOCTHEO": DEFAULT_LOCTHEO,
         "TU_NGAY": f"{tu_ngay_ddmmyyyy} 00:00:00",
@@ -413,7 +420,7 @@ def build_export_xml_params(don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, ds_malk
         "MODE": DEFAULT_MODE,
         "DTBN": DEFAULT_DTBN,
         "LOAIXML": DEFAULT_LOAIXML,
-        "QD3176": DEFAULT_QD3176
+        "QD3176": qd3176
     }
 
 
@@ -449,12 +456,6 @@ def l2_get_xml_content(don_vi, tu_ngay, den_ngay, ds_malk):
     }
 
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    
-    print("base_url =", base_url)
-    print("uuid =", uuid_value)
-    print("jsessionid =", don_vi.api_jsessionid)
-    print("headers =", headers)
-    print("body =", body[:1000])
 
     response = requests.post(
         base_url,

@@ -227,6 +227,8 @@ def seed_conditions():
     add_condition_if_not_exists("NOT_EQUAL", "Khác")
     add_condition_if_not_exists("CONTAINS", "Chứa")
     add_condition_if_not_exists("IN_LIST", "Nằm trong danh sách")
+    add_condition_if_not_exists("BETWEEN", "Nằm trong khoảng")
+    add_condition_if_not_exists("NOT_BETWEEN", "Không nằm trong khoảng")
     db.session.commit()
 
 
