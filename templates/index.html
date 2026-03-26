@@ -34,8 +34,7 @@
                 <select name="he_thong_id" id="he_thong_select" required>
                     <option value="">-- Chọn hệ thống --</option>
                     {% for s in systems %}
-                    <option value="{{ s.id }}" {% if selected_system_id %} {% if selected_system_id|string==s.id|string
-                        %}selected{% endif %} {% else %} {% if s.ten_he_thong=='L2' %}selected{% endif %} {% endif %}>
+                    <option value="{{ s.id }}" {% if selected_system_id %} {% if selected_system_id|string==s.id|string %}selected{% endif %} {% else %} {% if s.ten_he_thong=='L2' %}selected{% endif %} {% endif %}>
                         {{ s.ten_he_thong }}
                     </option>
                     {% endfor %}
@@ -47,8 +46,7 @@
                 <select name="don_vi_id" id="don_vi_select" required>
                     <option value="">-- Chọn đơn vị --</option>
                     {% for u in units %}
-                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if
-                        selected_unit_id|string==u.id|string %}selected{% endif %}>
+                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if selected_unit_id|string==u.id|string %}selected{% endif %}>
                         {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
                     </option>
                     {% endfor %}
@@ -110,6 +108,7 @@
         Số hồ sơ lỗi/cảnh báo:
         <strong>{{ stats.error_hoso_count if stats else 0 }}</strong>
     </div>
+
     {% if hoso_results %}
     <div class="table-wrap">
         <table>
@@ -118,44 +117,67 @@
                     <th style="width: 70px;">STT</th>
                     <th style="width: 180px;">Mã bệnh nhân</th>
                     <th style="width: 240px;">Họ tên</th>
+                    <th style="width: 150px;">Ngày vào</th>
                     <th style="width: 130px;">Mức độ</th>
                     <th>Nội dung cảnh báo</th>
+                    <th style="width: 90px; text-align:center;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 {% set stt = namespace(value=1) %}
                 {% for hoso in hoso_results %}
-                {% if hoso.warnings %}
-                {% set warning_count = hoso.warnings|length %}
-                {% for item in hoso.warnings %}
-                <tr>
-                    {% if loop.first %}
-                    <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
-                        {{ stt.value }}
-                    </td>
-                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
-                        <strong>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</strong>
-                    </td>
-                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
-                        {{ hoso.patient_name if hoso.patient_name else '(không có)' }}
-                    </td>
-                    {% endif %}
+                    {% if hoso.warnings %}
+                        {% set warning_count = hoso.warnings|length %}
+                        {% for item in hoso.warnings %}
+                        <tr>
+                            {% if loop.first %}
+                            <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
+                                {{ stt.value }}
+                            </td>
+                            <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                                <strong>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</strong>
+                            </td>
+                            <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                                {{ hoso.patient_name if hoso.patient_name else '(không có)' }}
+                            </td>
+                            <td rowspan="{{ warning_count }}" style="vertical-align:middle; white-space:nowrap;">
+                                {{ hoso.ngay_vao if hoso.ngay_vao else '(không có)' }}
+                            </td>
+                            {% endif %}
 
-                    <td>
-                        {% set severity = (item.severity or '')|upper %}
-                        {% if severity == 'ERROR' %}
-                        <span class="badge badge-error">{{ item.severity }}</span>
-                        {% elif severity == 'WARNING' %}
-                        <span class="badge badge-warning">{{ item.severity }}</span>
-                        {% else %}
-                        <span class="badge badge-info">{{ item.severity }}</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ item.message }}</td>
-                </tr>
-                {% endfor %}
-                {% set stt.value = stt.value + 1 %}
-                {% endif %}
+                            <td>
+                                {% set severity = (item.severity or '')|upper %}
+                                {% if severity == 'ERROR' %}
+                                <span class="badge badge-error">{{ item.severity }}</span>
+                                {% elif severity == 'WARNING' %}
+                                <span class="badge badge-warning">{{ item.severity }}</span>
+                                {% else %}
+                                <span class="badge badge-info">{{ item.severity }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>{{ item.message }}</td>
+
+                            {% if loop.first %}
+                            <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary btn-view-xml"
+                                    data-patient-code="{{ hoso.patient_code if hoso.patient_code else '' }}"
+                                    data-patient-name="{{ hoso.patient_name if hoso.patient_name else '' }}"
+                                    data-ngay-vao="{{ hoso.ngay_vao if hoso.ngay_vao else '' }}"
+                                    data-xml="{{ hoso.raw_xml|e }}"
+                                    title="Xem XML"
+                                    style="padding:6px 10px; min-width:auto;"
+                                >
+                                    👁
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                        {% set stt.value = stt.value + 1 %}
+                    {% endif %}
                 {% endfor %}
             </tbody>
         </table>
@@ -167,39 +189,156 @@
     {% endif %}
 </div>
 
+<div id="xmlModal" class="xml-modal" style="display:none;">
+    <div class="xml-modal__backdrop"></div>
+    <div class="xml-modal__dialog">
+        <div class="xml-modal__header">
+            <div>
+                <div style="font-weight:700; font-size:18px;">XML hồ sơ bệnh nhân</div>
+                <div id="xmlModalMeta" style="font-size:13px; color:#666; margin-top:4px;"></div>
+            </div>
+            <button type="button" id="xmlModalClose" class="xml-modal__close">×</button>
+        </div>
+        <div class="xml-modal__body">
+            <pre id="xmlModalContent" class="xml-modal__content"></pre>
+        </div>
+    </div>
+</div>
+
+<style>
+.xml-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+.xml-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+}
+.xml-modal__dialog {
+    position: relative;
+    width: min(1100px, 92vw);
+    max-height: 88vh;
+    margin: 4vh auto;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.xml-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.xml-modal__close {
+    border: none;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+}
+.xml-modal__body {
+    padding: 0;
+}
+.xml-modal__content {
+    margin: 0;
+    padding: 16px 20px;
+    max-height: calc(88vh - 80px);
+    overflow: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+</style>
+
 <script>
-    (function () {
-        const systemSelect = document.getElementById("he_thong_select");
-        const unitSelect = document.getElementById("don_vi_select");
+(function () {
+    const systemSelect = document.getElementById("he_thong_select");
+    const unitSelect = document.getElementById("don_vi_select");
 
-        function filterUnits() {
-            const selectedSystemId = systemSelect.value;
-            const options = unitSelect.querySelectorAll("option");
-            const currentUnitValue = unitSelect.value;
-            let hasVisibleSelected = false;
+    function filterUnits() {
+        const selectedSystemId = systemSelect.value;
+        const options = unitSelect.querySelectorAll("option");
+        const currentUnitValue = unitSelect.value;
+        let hasVisibleSelected = false;
 
-            options.forEach(function (option, index) {
-                if (index === 0) {
-                    option.hidden = false;
-                    return;
-                }
-
-                const systemId = option.getAttribute("data-system");
-                const visible = !selectedSystemId || systemId === selectedSystemId;
-                option.hidden = !visible;
-
-                if (visible && option.value === currentUnitValue) {
-                    hasVisibleSelected = true;
-                }
-            });
-
-            if (!hasVisibleSelected) {
-                unitSelect.value = "";
+        options.forEach(function (option, index) {
+            if (index === 0) {
+                option.hidden = false;
+                return;
             }
-        }
 
-        systemSelect.addEventListener("change", filterUnits);
-        filterUnits();
-    })();
+            const systemId = option.getAttribute("data-system");
+            const visible = !selectedSystemId || systemId === selectedSystemId;
+            option.hidden = !visible;
+
+            if (visible && option.value === currentUnitValue) {
+                hasVisibleSelected = true;
+            }
+        });
+
+        if (!hasVisibleSelected) {
+            unitSelect.value = "";
+        }
+    }
+
+    systemSelect.addEventListener("change", filterUnits);
+    filterUnits();
+})();
+
+(function () {
+    const modal = document.getElementById("xmlModal");
+    const modalClose = document.getElementById("xmlModalClose");
+    const modalContent = document.getElementById("xmlModalContent");
+    const modalMeta = document.getElementById("xmlModalMeta");
+    const backdrop = modal.querySelector(".xml-modal__backdrop");
+    const viewButtons = document.querySelectorAll(".btn-view-xml");
+
+    function closeModal() {
+        modal.style.display = "none";
+        modalContent.textContent = "";
+        modalMeta.textContent = "";
+        document.body.style.overflow = "";
+    }
+
+    function openModal(metaText, xmlText) {
+        modalMeta.textContent = metaText || "";
+        modalContent.textContent = xmlText || "";
+        modal.style.display = "block";
+        document.body.style.overflow = "hidden";
+    }
+
+    viewButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            const patientCode = btn.getAttribute("data-patient-code") || "";
+            const patientName = btn.getAttribute("data-patient-name") || "";
+            const ngayVao = btn.getAttribute("data-ngay-vao") || "";
+            const xml = btn.getAttribute("data-xml") || "";
+
+            const metaParts = [];
+            if (patientCode) metaParts.push("Mã BN: " + patientCode);
+            if (patientName) metaParts.push("Họ tên: " + patientName);
+            if (ngayVao) metaParts.push("Ngày vào: " + ngayVao);
+
+            openModal(metaParts.join(" | "), xml);
+        });
+    });
+
+    modalClose.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", closeModal);
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && modal.style.display === "block") {
+            closeModal();
+        }
+    });
+})();
 </script>
 {% endblock %}

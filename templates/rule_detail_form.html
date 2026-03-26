@@ -1,32 +1,39 @@
 {% extends "base.html" %}
-{% block title %}{% if item %}Sửa rule detail{% else %}Thêm rule detail{% endif %}{% endblock %}
+{% block title %}{% if item %}Sửa rule detail{% else %}Tạo trigger / validate{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">{% if item %}Sửa{% else %}Thêm{% endif %} rule detail</h1>
-    <div class="page-subtitle">Cấu hình trigger hoặc validate cho rule: {{ rule.ten_rule }}</div>
+    <h1 class="page-title">{% if item %}Sửa rule detail{% else %}Tạo trigger / validate{% endif %}</h1>
+    <div class="page-subtitle">Cấu hình cho rule: {{ rule.ten_rule }}</div>
 </div>
 
 <div class="card">
-    <h2 class="card-title">Thông tin detail</h2>
-
     {% if error %}
     <div class="alert alert-danger" style="margin-bottom: 15px;">
         {{ error }}
     </div>
     {% endif %}
 
-    <form method="POST" id="rule-detail-form">
+    {% if item %}
+    <!-- GIỮ LUỒNG CŨ KHI EDIT 1 DETAIL -->
+    <h2 class="card-title">Sửa detail</h2>
+
+    <form method="POST" id="single-detail-form">
         <div class="grid">
-            <div class="col-6">
+            <div class="col-4">
                 <label>Role</label>
                 <select name="condition_role" required>
-                    <option value="TRIGGER" {% if item and item.condition_role=='TRIGGER' %}selected{% endif %}>TRIGGER</option>
-                    <option value="VALIDATE" {% if not item or item.condition_role=='VALIDATE' %}selected{% endif %}>VALIDATE</option>
+                    <option value="TRIGGER" {% if item.condition_role=='TRIGGER' %}selected{% endif %}>TRIGGER</option>
+                    <option value="VALIDATE" {% if item.condition_role=='VALIDATE' %}selected{% endif %}>VALIDATE</option>
                 </select>
             </div>
 
-            <div class="col-6">
+            <div class="col-4">
+                <label>Nhóm logic</label>
+                <input type="text" name="group_no" value="{{ item.group_no if item.group_no else '1' }}" placeholder="1">
+            </div>
+
+            <div class="col-4">
                 <label>Thứ tự</label>
                 <input type="text" name="sort_order" value="{{ item.sort_order if item else '1' }}" placeholder="1">
             </div>
@@ -53,21 +60,11 @@
                     <option
                         value="{{ f.id }}"
                         data-type="{{ f.data_type or '' }}"
-                        {% if item and item.field_id==f.id %}selected{% endif %}>
-                        {{ f.ten_truong }} | {% if f.data_type %} ({{ f.data_type }}){% endif %}
+                        {% if item.field_id==f.id %}selected{% endif %}>
+                        {{ f.ten_truong }} | {{ f.xml_path }} {% if f.data_type %}({{ f.data_type }}){% endif %}
                     </option>
                     {% endfor %}
                 </select>
-
-                <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <span id="selected_field_type_badge"
-                        style="display:none; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; font-weight:600;">
-                    </span>
-
-                    <span id="selected_field_type_hint"
-                        style="display:none; font-size:12px; color:#6b7280;">
-                    </span>
-                </div>
             </div>
         </div>
 
@@ -76,25 +73,18 @@
                 <label>Condition</label>
                 <select name="condition_id" id="condition_id" required>
                     {% for c in conditions %}
-                    <option
-                        value="{{ c.id }}"
-                        data-code="{{ c.ma_dieu_kien }}"
-                        {% if item and item.condition_id==c.id %}selected{% endif %}>
+                    <option value="{{ c.id }}" {% if item.condition_id==c.id %}selected{% endif %}>
                         {{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}
                     </option>
                     {% endfor %}
                 </select>
-
-                <div id="condition_hint"
-                    style="display:none; margin-top:8px; font-size:12px; color:#6b7280;">
-                </div>
             </div>
 
             <div class="col-6">
                 <label>Kiểu so sánh</label>
                 <select name="compare_mode" id="compare_mode">
-                    <option value="VALUE" {% if not item or item.compare_mode=='VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
-                    <option value="FIELD" {% if item and item.compare_mode=='FIELD' %}selected{% endif %}>So sánh với field khác</option>
+                    <option value="VALUE" {% if item.compare_mode=='VALUE' %}selected{% endif %}>So sánh với giá trị cố định</option>
+                    <option value="FIELD" {% if item.compare_mode=='FIELD' %}selected{% endif %}>So sánh với field khác</option>
                 </select>
             </div>
         </div>
@@ -106,32 +96,8 @@
                     type="text"
                     name="gia_tri"
                     id="gia_tri"
-                    value="{{ item.gia_tri if item and item.gia_tri else '' }}"
-                    placeholder="Ví dụ: 12 hoặc A,B,C">
-
-                <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <span id="value_format_badge"
-                        style="display:none; padding:4px 10px; border-radius:999px; background:#ecfeff; color:#155e75; font-size:12px; font-weight:600;">
-                    </span>
-
-                    <span id="value_format_hint"
-                        style="display:none; font-size:12px; color:#6b7280;">
-                    </span>
-                </div>
-
-                <div class="form-group" style="margin-top:12px;">
-                    <label>Date part (nếu field là DATE)</label>
-                    <select name="date_part" id="date_part" class="form-control">
-                        <option value="">-- Không dùng --</option>
-                        <option value="DAY_OF_WEEK" {% if item and item.date_part=="DAY_OF_WEEK" %}selected{% endif %}>Thứ trong tuần</option>
-                        <option value="DAY" {% if item and item.date_part=="DAY" %}selected{% endif %}>Ngày</option>
-                        <option value="MONTH" {% if item and item.date_part=="MONTH" %}selected{% endif %}>Tháng</option>
-                        <option value="YEAR" {% if item and item.date_part=="YEAR" %}selected{% endif %}>Năm</option>
-                        <option value="HOUR" {% if item and item.date_part=="HOUR" %}selected{% endif %}>Giờ</option>
-                    </select>
-
-                    <div id="date_part_hint" style="display:none; margin-top:8px; font-size:12px; color:#6b7280;"></div>
-                </div>
+                    value="{{ item.gia_tri if item.gia_tri else '' }}"
+                    placeholder="Ví dụ: 7,8 hoặc 18-06">
             </div>
         </div>
 
@@ -156,13 +122,26 @@
                         {% for f in compare_fields %}
                         <option
                             value="{{ f.id }}"
-                            data-type="{{ f.data_type or '' }}"
-                            {% if item and item.compare_field_id==f.id %}selected{% endif %}>
-                            {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}{% if f.data_type %} ({{ f.data_type }}){% endif %}
+                            {% if item.compare_field_id==f.id %}selected{% endif %}>
+                            {{ f.xml.ma_xml }} | {{ f.ten_truong }} | {{ f.xml_path }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="col-12">
+                <label>Date part (nếu field là DATE)</label>
+                <select name="date_part" id="date_part">
+                    <option value="">-- Không dùng --</option>
+                    <option value="DAY_OF_WEEK" {% if item.date_part=="DAY_OF_WEEK" %}selected{% endif %}>Thứ trong tuần</option>
+                    <option value="DAY" {% if item.date_part=="DAY" %}selected{% endif %}>Ngày</option>
+                    <option value="MONTH" {% if item.date_part=="MONTH" %}selected{% endif %}>Tháng</option>
+                    <option value="YEAR" {% if item.date_part=="YEAR" %}selected{% endif %}>Năm</option>
+                    <option value="HOUR" {% if item.date_part=="HOUR" %}selected{% endif %}>Giờ</option>
+                </select>
             </div>
         </div>
 
@@ -171,45 +150,185 @@
             <a href="/rules/{{ rule.id }}/details" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
-</div>
 
-<script>
+    <script>
     (function () {
         const compareMode = document.getElementById("compare_mode");
         const valueGroup = document.getElementById("value_compare_group");
         const fieldGroup = document.getElementById("field_compare_group");
-        const giaTriInput = document.getElementById("gia_tri");
 
-        const xmlSelect = document.getElementById("xml_id");
-        const fieldSelect = document.getElementById("field_id");
-
-        const conditionSelect = document.getElementById("condition_id");
-        const datePartSelect = document.getElementById("date_part");
-
-        const compareXmlSelect = document.getElementById("compare_xml_id");
-        const compareFieldSelect = document.getElementById("compare_field_id");
-
-        const fieldTypeBadge = document.getElementById("selected_field_type_badge");
-        const fieldTypeHint = document.getElementById("selected_field_type_hint");
-        const valueFormatBadge = document.getElementById("value_format_badge");
-        const valueFormatHint = document.getElementById("value_format_hint");
-        const conditionHint = document.getElementById("condition_hint");
-        const datePartHint = document.getElementById("date_part_hint");
-
-        const initialFieldId = "{{ item.field_id if item and item.field_id else '' }}";
-        const initialCompareFieldId = "{{ item.compare_field_id if item and item.compare_field_id else '' }}";
-
-        function getSelectedOption(selectEl) {
-            return selectEl.options[selectEl.selectedIndex] || null;
+        function toggleCompareMode() {
+            const mode = compareMode.value;
+            if (mode === "FIELD") {
+                valueGroup.style.display = "none";
+                fieldGroup.style.display = "block";
+            } else {
+                valueGroup.style.display = "block";
+                fieldGroup.style.display = "none";
+            }
         }
 
-        function getSelectedFieldType() {
-            const opt = getSelectedOption(fieldSelect);
-            return opt ? (opt.dataset.type || "").trim().toUpperCase() : "";
-        }
+        compareMode.addEventListener("change", toggleCompareMode);
+        toggleCompareMode();
+    })();
+    </script>
 
-        function getSelectedConditionCode() {
-            const opt = getSelectedOption(conditionSelect);
+    {% else %}
+    <!-- UI MỚI KHI CREATE -->
+    <h2 class="card-title">Tạo trigger / validate trong 1 lần</h2>
+
+    <form method="POST" id="bulk-rule-detail-form">
+        <input type="hidden" name="bulk_payload" id="bulk_payload">
+
+        <div style="margin-bottom: 18px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+            <div style="font-weight: 700; margin-bottom: 6px;">Công thức trigger</div>
+            <div id="trigger_formula_preview" style="font-size: 14px; color: #374151;">
+                Chưa có trigger nào
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
+                Mỗi nhóm = AND. Giữa các nhóm = OR.
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 18px; border: 1px dashed #d1d5db;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+                <div>
+                    <div style="font-weight:700;">Khối Trigger</div>
+                    <div style="font-size:12px; color:#6b7280;">Khi một nhóm trigger đúng thì rule được kích hoạt.</div>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn_add_trigger_group">+ Thêm nhóm OR</button>
+            </div>
+
+            <div id="trigger_groups_container"></div>
+        </div>
+
+        <div class="card" style="margin-bottom: 18px; border: 1px dashed #d1d5db;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+                <div>
+                    <div style="font-weight:700;">Khối Validate</div>
+                    <div style="font-size:12px; color:#6b7280;">Các validate hiện đang được lưu trong cùng 1 nhóm AND.</div>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn_add_validate">+ Thêm validate</button>
+            </div>
+
+            <div id="validate_items_container"></div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu toàn bộ</button>
+            <a href="/rules/{{ rule.id }}/details" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+
+    <template id="condition-card-template">
+        <div class="condition-card" style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; margin-bottom:12px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+                <div class="condition-title" style="font-weight:700;">Điều kiện</div>
+                <button type="button" class="btn btn-danger btn-remove-condition">Xóa</button>
+            </div>
+
+            <div class="grid">
+                <div class="col-6">
+                    <label>XML nguồn</label>
+                    <select class="input-xml">
+                        <option value="">-- Chọn XML --</option>
+                        {% for x in xmls %}
+                        <option value="{{ x.id }}">{{ x.ma_xml }} - {{ x.ten_xml }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-6">
+                    <label>Field nguồn</label>
+                    <select class="input-field">
+                        <option value="">-- Chọn field --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-6">
+                    <label>Condition</label>
+                    <select class="input-condition">
+                        <option value="">-- Chọn điều kiện --</option>
+                        {% for c in conditions %}
+                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-6">
+                    <label>Kiểu so sánh</label>
+                    <select class="input-compare-mode">
+                        <option value="VALUE">So sánh với giá trị cố định</option>
+                        <option value="FIELD">So sánh với field khác</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="value-mode-box">
+                <div class="grid">
+                    <div class="col-12">
+                        <label>Giá trị so sánh</label>
+                        <input type="text" class="input-gia-tri" placeholder="Ví dụ: 7,8 hoặc 18-06">
+                        <div class="hint-value" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-mode-box" style="display:none;">
+                <div class="grid">
+                    <div class="col-6">
+                        <label>XML so sánh</label>
+                        <select class="input-compare-xml">
+                            <option value="">-- Chọn XML so sánh --</option>
+                            {% for x in xmls %}
+                            <option value="{{ x.id }}">{{ x.ma_xml }} - {{ x.ten_xml }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-6">
+                        <label>Field so sánh</label>
+                        <select class="input-compare-field">
+                            <option value="">-- Chọn field so sánh --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-12">
+                    <label>Date part (nếu field là DATE)</label>
+                    <select class="input-date-part">
+                        <option value="">-- Không dùng --</option>
+                        <option value="DAY_OF_WEEK">Thứ trong tuần</option>
+                        <option value="DAY">Ngày</option>
+                        <option value="MONTH">Tháng</option>
+                        <option value="YEAR">Năm</option>
+                        <option value="HOUR">Giờ</option>
+                    </select>
+                    <div class="hint-date-part" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+    (function () {
+        const triggerGroupsContainer = document.getElementById("trigger_groups_container");
+        const validateItemsContainer = document.getElementById("validate_items_container");
+        const triggerFormulaPreview = document.getElementById("trigger_formula_preview");
+        const bulkForm = document.getElementById("bulk-rule-detail-form");
+        const bulkPayloadInput = document.getElementById("bulk_payload");
+        const template = document.getElementById("condition-card-template");
+
+        let triggerGroupCounter = 0;
+        let triggerConditionCounter = 0;
+        let validateCounter = 0;
+
+        function getConditionCode(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
             return opt ? (opt.dataset.code || "").trim().toUpperCase() : "";
         }
 
@@ -217,152 +336,337 @@
             return code === "BETWEEN" || code === "NOT_BETWEEN";
         }
 
-        function toggleCompareMode() {
-            const mode = compareMode.value;
-
-            if (mode === "FIELD") {
-                valueGroup.style.display = "none";
-                fieldGroup.style.display = "block";
-                giaTriInput.value = "";
-            } else {
-                valueGroup.style.display = "block";
-                fieldGroup.style.display = "none";
-                compareXmlSelect.value = "";
-                compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
-            }
-        }
-
-        function buildOptionText(item) {
-            return `${item.xml_code} | ${item.ten_truong} | ${item.xml_path}${item.data_type ? ` (${item.data_type})` : ""}`;
-        }
-
-        function updateSelectedFieldInfo() {
-            const fieldType = getSelectedFieldType();
-
-            if (!fieldType) {
-                fieldTypeBadge.style.display = "none";
-                fieldTypeHint.style.display = "none";
-                return;
-            }
-        }
-
-        function updateDatePartGuide() {
-            const fieldType = getSelectedFieldType();
-            const datePart = (datePartSelect.value || "").toUpperCase();
-
-            if (fieldType !== "DATE") {
-                datePartHint.style.display = "none";
-                return;
-            }
-
-            datePartHint.style.display = "block";
-            datePartHint.textContent = hint;
-        }
-
-        async function loadFieldsByXml(xmlId, targetSelect, selectedValue = "") {
-            const emptyLabel = targetSelect.id === "compare_field_id"
-                ? "-- Chọn field so sánh --"
-                : "-- Chọn field --";
-
+        async function loadFieldsByXml(xmlId, targetSelect) {
             targetSelect.innerHTML = '<option value="">Đang tải...</option>';
 
             if (!xmlId) {
-                targetSelect.innerHTML = `<option value="">${emptyLabel}</option>`;
-                if (targetSelect.id === "field_id") {
-                    updateSelectedFieldInfo();
-                    updateDatePartGuide();
-                }
+                targetSelect.innerHTML = '<option value="">-- Chọn field --</option>';
                 return;
             }
 
             try {
-                const response = await fetch(`/rules/api/fields-by-xml?xml_id=${encodeURIComponent(xmlId)}`, {
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest"
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error("Không tải được danh sách field");
-                }
-
+                const response = await fetch(`/rules/api/fields-by-xml?xml_id=${encodeURIComponent(xmlId)}`);
                 const data = await response.json();
 
-                targetSelect.innerHTML = `<option value="">${emptyLabel}</option>`;
-
+                targetSelect.innerHTML = '<option value="">-- Chọn field --</option>';
                 data.forEach(function (f) {
                     const opt = document.createElement("option");
                     opt.value = f.id;
-                    opt.textContent = buildOptionText(f);
-                    opt.dataset.type = f.data_type || "";
-
-                    if (selectedValue && String(selectedValue) === String(f.id)) {
-                        opt.selected = true;
-                    }
-
+                    opt.textContent = `${f.ten_truong} | ${f.xml_path} (${f.data_type || 'STRING'})`;
+                    opt.dataset.type = f.data_type || "STRING";
                     targetSelect.appendChild(opt);
                 });
-
-                if (targetSelect.id === "field_id") {
-                    updateSelectedFieldInfo();
-                    updateDatePartGuide();
-                }
             } catch (err) {
                 targetSelect.innerHTML = '<option value="">-- Lỗi tải field --</option>';
-                console.error(err);
-
-                if (targetSelect.id === "field_id") {
-                    updateSelectedFieldInfo();
-                    updateDatePartGuide();
-                }
             }
         }
 
-        xmlSelect.addEventListener("change", function () {
-            loadFieldsByXml(this.value, fieldSelect);
-        });
+        function createConditionCard(type, groupIndex, conditionIndex) {
+            const node = template.content.firstElementChild.cloneNode(true);
 
-        compareXmlSelect.addEventListener("change", function () {
-            loadFieldsByXml(this.value, compareFieldSelect);
-        });
+            const titleEl = node.querySelector(".condition-title");
+            const xmlSelect = node.querySelector(".input-xml");
+            const fieldSelect = node.querySelector(".input-field");
+            const conditionSelect = node.querySelector(".input-condition");
+            const compareModeSelect = node.querySelector(".input-compare-mode");
+            const giaTriInput = node.querySelector(".input-gia-tri");
+            const compareXmlSelect = node.querySelector(".input-compare-xml");
+            const compareFieldSelect = node.querySelector(".input-compare-field");
+            const datePartSelect = node.querySelector(".input-date-part");
+            const valueModeBox = node.querySelector(".value-mode-box");
+            const fieldModeBox = node.querySelector(".field-mode-box");
+            const hintValue = node.querySelector(".hint-value");
+            const hintDatePart = node.querySelector(".hint-date-part");
+            const removeBtn = node.querySelector(".btn-remove-condition");
 
-        fieldSelect.addEventListener("change", function () {
-            updateSelectedFieldInfo();
-            updateDatePartGuide();
-        });
+            if (type === "trigger") {
+                titleEl.textContent = `Trigger ${conditionIndex}`;
+            } else {
+                titleEl.textContent = `Validate ${conditionIndex}`;
+            }
 
-        datePartSelect.addEventListener("change", function () {
-            updateDatePartGuide();
-        });
+            function updateCompareMode() {
+                if (compareModeSelect.value === "FIELD") {
+                    valueModeBox.style.display = "none";
+                    fieldModeBox.style.display = "block";
+                    giaTriInput.value = "";
+                } else {
+                    valueModeBox.style.display = "block";
+                    fieldModeBox.style.display = "none";
+                    compareXmlSelect.value = "";
+                    compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
+                }
+                updateHints();
+            }
 
-        compareMode.addEventListener("change", toggleCompareMode);
+            function updateHints() {
+                const conditionCode = getConditionCode(conditionSelect);
+                const datePart = (datePartSelect.value || "").toUpperCase();
 
-        document.getElementById("rule-detail-form").addEventListener("submit", function (e) {
-            if (compareMode.value !== "VALUE") {
+                hintValue.textContent = "";
+                hintDatePart.textContent = "";
+
+                if (compareModeSelect.value === "VALUE") {
+                    if (conditionCode === "IN_LIST") {
+                        hintValue.textContent = "Nhập nhiều giá trị cách nhau dấu phẩy. Ví dụ: 7,8";
+                    } else if (isRangeCondition(conditionCode)) {
+                        hintValue.textContent = "Nhập khoảng dạng start-end. Ví dụ: 18-06 hoặc 07-17";
+                    } else if (conditionCode === "IS_NULL" || conditionCode === "NOT_NULL") {
+                        hintValue.textContent = "Điều kiện này không cần nhập giá trị.";
+                    } else {
+                        hintValue.textContent = "Nhập 1 giá trị so sánh.";
+                    }
+                }
+
+                if (datePart === "DAY_OF_WEEK") {
+                    hintDatePart.textContent = "Quy ước: Thứ 2=2 ... Thứ 7=7, Chủ nhật=8.";
+                    if (!giaTriInput.value.trim() && conditionCode === "IN_LIST") {
+                        giaTriInput.placeholder = "Ví dụ: 7,8";
+                    }
+                } else if (datePart === "HOUR") {
+                    hintDatePart.textContent = "Giờ từ 0-23. Ngoài giờ hành chính có thể nhập BETWEEN 18-06.";
+                    if (!giaTriInput.value.trim() && isRangeCondition(conditionCode)) {
+                        giaTriInput.placeholder = "Ví dụ: 18-06";
+                    }
+                } else {
+                    giaTriInput.placeholder = "Ví dụ: 7,8 hoặc 18-06";
+                }
+            }
+
+            xmlSelect.addEventListener("change", function () {
+                loadFieldsByXml(this.value, fieldSelect);
+            });
+
+            compareXmlSelect.addEventListener("change", function () {
+                loadFieldsByXml(this.value, compareFieldSelect);
+            });
+
+            compareModeSelect.addEventListener("change", updateCompareMode);
+            conditionSelect.addEventListener("change", updateHints);
+            datePartSelect.addEventListener("change", updateHints);
+
+            removeBtn.addEventListener("click", function () {
+                const parentGroup = node.closest(".trigger-group");
+                node.remove();
+
+                if (parentGroup) {
+                    const cards = parentGroup.querySelectorAll(".condition-card");
+                    if (cards.length === 0) {
+                        parentGroup.remove();
+                    }
+                    refreshGroupLabels();
+                    updateTriggerFormulaPreview();
+                }
+            });
+
+            updateCompareMode();
+
+            node.getPayload = function () {
+                return {
+                    field_id: fieldSelect.value || "",
+                    condition_id: conditionSelect.value || "",
+                    compare_mode: compareModeSelect.value || "VALUE",
+                    compare_field_id: compareFieldSelect.value || "",
+                    gia_tri: giaTriInput.value || "",
+                    date_part: datePartSelect.value || ""
+                };
+            };
+
+            return node;
+        }
+
+        function createTriggerGroup() {
+            triggerGroupCounter += 1;
+
+            const groupEl = document.createElement("div");
+            groupEl.className = "trigger-group";
+            groupEl.style.border = "1px solid #d1d5db";
+            groupEl.style.borderRadius = "10px";
+            groupEl.style.padding = "14px";
+            groupEl.style.marginBottom = "14px";
+            groupEl.style.background = "#fff";
+
+            groupEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+                    <div>
+                        <div class="trigger-group-title" style="font-weight:700;">Nhóm Trigger ${triggerGroupCounter}</div>
+                        <div style="font-size:12px; color:#6b7280;">Các điều kiện trong nhóm này sẽ nối với nhau bằng AND.</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn-primary btn-add-trigger-condition">+ Điều kiện AND</button>
+                        <button type="button" class="btn btn-danger btn-remove-trigger-group">Xóa nhóm</button>
+                    </div>
+                </div>
+                <div class="trigger-group-conditions"></div>
+            `;
+
+            const conditionsWrap = groupEl.querySelector(".trigger-group-conditions");
+            const addConditionBtn = groupEl.querySelector(".btn-add-trigger-condition");
+            const removeGroupBtn = groupEl.querySelector(".btn-remove-trigger-group");
+
+            function addCondition() {
+                triggerConditionCounter += 1;
+                const card = createConditionCard("trigger", triggerGroupCounter, triggerConditionCounter);
+                conditionsWrap.appendChild(card);
+                updateTriggerFormulaPreview();
+            }
+
+            addConditionBtn.addEventListener("click", addCondition);
+
+            removeGroupBtn.addEventListener("click", function () {
+                groupEl.remove();
+                refreshGroupLabels();
+                updateTriggerFormulaPreview();
+            });
+
+            addCondition();
+            triggerGroupsContainer.appendChild(groupEl);
+            refreshGroupLabels();
+            updateTriggerFormulaPreview();
+        }
+
+        function createValidateItem() {
+            validateCounter += 1;
+            const card = createConditionCard("validate", 1, validateCounter);
+            validateItemsContainer.appendChild(card);
+        }
+
+        function refreshGroupLabels() {
+            const groups = triggerGroupsContainer.querySelectorAll(".trigger-group");
+            groups.forEach(function (groupEl, idx) {
+                const title = groupEl.querySelector(".trigger-group-title");
+                title.textContent = `Nhóm Trigger ${idx + 1}`;
+            });
+        }
+
+        function updateTriggerFormulaPreview() {
+            const groups = Array.from(triggerGroupsContainer.querySelectorAll(".trigger-group"));
+            if (!groups.length) {
+                triggerFormulaPreview.textContent = "Chưa có trigger nào";
                 return;
             }
 
-            const conditionCode = getSelectedConditionCode();
-            const value = (giaTriInput.value || "").trim();
+            const parts = groups.map(function (groupEl, index) {
+                const count = groupEl.querySelectorAll(".condition-card").length;
+                if (count <= 1) {
+                    return `T${index + 1}`;
+                }
+                const andParts = [];
+                for (let i = 1; i <= count; i++) {
+                    andParts.push(`T${index + 1}.${i}`);
+                }
+                return `(${andParts.join(" AND ")})`;
+            });
 
-            if (isRangeCondition(conditionCode) && !value.includes("-")) {
+            triggerFormulaPreview.textContent = parts.join(" OR ");
+        }
+
+        function collectPayload() {
+            const triggerGroups = [];
+            const groupEls = triggerGroupsContainer.querySelectorAll(".trigger-group");
+
+            groupEls.forEach(function (groupEl) {
+                const conditions = [];
+                groupEl.querySelectorAll(".condition-card").forEach(function (cardEl) {
+                    conditions.push(cardEl.getPayload());
+                });
+                if (conditions.length) {
+                    triggerGroups.push({ conditions });
+                }
+            });
+
+            const validateItems = [];
+            validateItemsContainer.querySelectorAll(".condition-card").forEach(function (cardEl) {
+                validateItems.push(cardEl.getPayload());
+            });
+
+            return {
+                trigger_groups: triggerGroups,
+                validate_items: validateItems
+            };
+        }
+
+        function validatePayload(payload) {
+            if (!payload.trigger_groups.length) {
+                alert("Phải có ít nhất 1 nhóm trigger.");
+                return false;
+            }
+
+            let hasTriggerCondition = false;
+            payload.trigger_groups.forEach(function (group) {
+                if (group.conditions.length) {
+                    hasTriggerCondition = true;
+                }
+                group.conditions.forEach(function (cond) {
+                    if (!cond.field_id || !cond.condition_id) {
+                        throw new Error("Trigger đang thiếu field hoặc condition.");
+                    }
+                    if (cond.compare_mode === "FIELD" && !cond.compare_field_id) {
+                        throw new Error("Có trigger đang thiếu field so sánh.");
+                    }
+                    if (cond.compare_mode === "VALUE") {
+                        const conditionSelect = findConditionOptionByValue(cond.condition_id);
+                        const code = conditionSelect ? (conditionSelect.dataset.code || "").toUpperCase() : "";
+                        if (isRangeCondition(code) && cond.gia_tri && !cond.gia_tri.includes("-")) {
+                            throw new Error("Điều kiện khoảng phải nhập dạng start-end, ví dụ 18-06.");
+                        }
+                    }
+                });
+            });
+
+            if (!hasTriggerCondition) {
+                alert("Phải có ít nhất 1 trigger.");
+                return false;
+            }
+
+            if (!payload.validate_items.length) {
+                alert("Phải có ít nhất 1 validate.");
+                return false;
+            }
+
+            payload.validate_items.forEach(function (cond) {
+                if (!cond.field_id || !cond.condition_id) {
+                    throw new Error("Validate đang thiếu field hoặc condition.");
+                }
+                if (cond.compare_mode === "FIELD" && !cond.compare_field_id) {
+                    throw new Error("Có validate đang thiếu field so sánh.");
+                }
+            });
+
+            return true;
+        }
+
+        function findConditionOptionByValue(value) {
+            const sampleSelect = document.querySelector(".input-condition");
+            if (!sampleSelect) return null;
+            return Array.from(sampleSelect.options).find(function (opt) {
+                return String(opt.value) === String(value);
+            }) || null;
+        }
+
+        document.getElementById("btn_add_trigger_group").addEventListener("click", createTriggerGroup);
+        document.getElementById("btn_add_validate").addEventListener("click", createValidateItem);
+
+        bulkForm.addEventListener("submit", function (e) {
+            try {
+                const payload = collectPayload();
+                const ok = validatePayload(payload);
+                if (!ok) {
+                    e.preventDefault();
+                    return;
+                }
+
+                bulkPayloadInput.value = JSON.stringify(payload);
+            } catch (err) {
                 e.preventDefault();
-                alert("Condition trong khoảng yêu cầu giá trị có dấu '-', ví dụ: 07-17 hoặc 18-06.");
-                giaTriInput.focus();
+                alert(err.message || "Dữ liệu chưa hợp lệ.");
             }
         });
 
-        toggleCompareMode();
-        updateSelectedFieldInfo();
-        updateDatePartGuide();
-
-        if (xmlSelect.value && fieldSelect.options.length <= 1) {
-            loadFieldsByXml(xmlSelect.value, fieldSelect, initialFieldId);
-        }
-
-        if (compareXmlSelect.value && compareFieldSelect.options.length <= 1) {
-            loadFieldsByXml(compareXmlSelect.value, compareFieldSelect, initialCompareFieldId);
-        }
+        createTriggerGroup();
+        createValidateItem();
     })();
-</script>
+    </script>
+    {% endif %}
+</div>
 {% endblock %}

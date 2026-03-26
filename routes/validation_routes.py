@@ -29,7 +29,6 @@ def index():
         mode = request.form.get("mode")
 
         try:
-            # ====== MODE FILE ======
             if mode == "file":
                 file = request.files.get("xml_file")
 
@@ -43,9 +42,8 @@ def index():
                     file.save(file_path)
 
                     tree = parse_xml_file(file_path)
-                    hoso_results = run_validation(tree)
+                    hoso_results, stats = run_validation(tree)
 
-            # ====== MODE L2 ======
             elif mode == "l2":
                 don_vi_id = request.form.get("don_vi_id")
                 tu_ngay = request.form.get("tu_ngay")

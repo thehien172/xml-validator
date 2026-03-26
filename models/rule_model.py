@@ -44,12 +44,15 @@ class RuleDetail(db.Model):
 
     compare_mode = db.Column(db.String(20), nullable=False, default="VALUE")
     compare_field_id = db.Column(db.Integer, db.ForeignKey("danh_muc_truong_du_lieu.id"), nullable=True)
+    date_part = db.Column(db.String(50), nullable=True)
+
+    # Cùng group_no = AND, khác group_no = OR
+    group_no = db.Column(db.Integer, nullable=False, default=1)
 
     rule = db.relationship("Rule", backref="details")
     field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[field_id])
     condition = db.relationship("DanhMucDieuKien")
     compare_field = db.relationship("DanhMucTruongDuLieu", foreign_keys=[compare_field_id])
-    date_part = db.Column(db.String(50), nullable=True)
-    
+
     def __repr__(self):
         return f"<RuleDetail rule_id={self.rule_id} field_id={self.field_id}>"

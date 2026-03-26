@@ -306,7 +306,7 @@ def build_list_options_value(don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy):
     return json.dumps(value_obj, ensure_ascii=False, separators=(",", ":"))
 
 
-def build_list_request_params(uuid_value, don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, page=1, rows=100):
+def build_list_request_params(uuid_value, don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, page=1, rows=10000):
     post_data_obj = {
         "func": "ajaxExecuteQueryPaging",
         "uuid": uuid_value,
@@ -331,7 +331,7 @@ def build_list_request_params(uuid_value, don_vi, tu_ngay_ddmmyyyy, den_ngay_ddm
     }
 
 
-def _request_list_api_once(uuid_value, don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, page=1, rows=100):
+def _request_list_api_once(uuid_value, don_vi, tu_ngay_ddmmyyyy, den_ngay_ddmmyyyy, page=1, rows=10000):
     base_url = get_rest_base_url(don_vi)
     params = build_list_request_params(
         uuid_value=uuid_value,
@@ -369,7 +369,7 @@ def l2_get_hoso_list(don_vi, tu_ngay, den_ngay):
         tu_ngay_ddmmyyyy=tu_ngay_ddmmyyyy,
         den_ngay_ddmmyyyy=den_ngay_ddmmyyyy,
         page=1,
-        rows=100
+        rows=10000
     )
 
     if response.status_code in (401, 403):
@@ -380,7 +380,7 @@ def l2_get_hoso_list(don_vi, tu_ngay, den_ngay):
             tu_ngay_ddmmyyyy=tu_ngay_ddmmyyyy,
             den_ngay_ddmmyyyy=den_ngay_ddmmyyyy,
             page=1,
-            rows=100
+            rows=10000
         )
 
     if response.status_code != 200:

@@ -6,7 +6,8 @@ from services.xml_parser_service import (
     build_xml_data_map_for_hoso,
     get_value_from_item,
     get_item_label,
-    get_hoso_identity
+    get_hoso_identity,
+    get_hoso_raw_xml
 )
 
 
@@ -41,7 +42,6 @@ def extract_date_part(value, part):
         return None
 
     if part == "DAY_OF_WEEK":
-        # 2-8 (Mon=2 ... Sun=8)
         return dt.weekday() + 2
 
     if part == "DAY":
@@ -89,12 +89,6 @@ def try_parse_number(value):
 
 
 def split_range_value(expected_value):
-    """
-    Tách giá trị dạng:
-    - 07-17
-    - 18-06
-    - 2-6
-    """
     if expected_value is None:
         return None, None
 
@@ -107,11 +101,6 @@ def split_range_value(expected_value):
 
 
 def is_between_value(actual_value, expected_value):
-    """
-    Hỗ trợ so sánh trong khoảng:
-    - dạng số bình thường: 7-17 => 8, 12, 17 là đúng
-    - dạng vòng qua 0: 18-06 => 18..23 hoặc 0..6 là đúng
-    """
     actual_num = try_parse_number(actual_value)
     start_raw, end_raw = split_range_value(expected_value)
 
@@ -127,14 +116,12 @@ def is_between_value(actual_value, expected_value):
     if start_num <= end_num:
         return start_num <= actual_num <= end_num
 
-    # khoảng vòng, ví dụ 18-06
     return actual_num >= start_num or actual_num <= end_num
 
 
 def check_condition(actual_value, condition_code, expected_value=None):
     actual_value = normalize_value(actual_value)
 
-    # expected_value có thể là list khi compare field khác XML
     if isinstance(expected_value, list):
         expected_list = normalize_list(expected_value)
 
@@ -190,14 +177,6 @@ def check_condition(actual_value, condition_code, expected_value=None):
 
 
 def get_expected_value_for_detail(detail, xml_data_map, current_item):
-    """
-    compare_mode = VALUE:
-        dùng detail.gia_tri
-
-    compare_mode = FIELD:
-        - nếu compare_field cùng XML với field hiện tại: lấy trên cùng item
-        - nếu compare_field khác XML: lấy toàn bộ giá trị field đó trong XML đích
-    """
     if detail.compare_mode == "FIELD" and detail.compare_field:
         source_xml_code = detail.field.xml.ma_xml
         target_xml_code = detail.compare_field.xml.ma_xml
@@ -234,27 +213,58 @@ def evaluate_detail_on_item(detail, xml_data_map, item):
     )
 
 
-def evaluate_trigger_any_item(detail, xml_data_map):
-    """
-    Trigger ở XML khác validate:
-    chỉ cần có ít nhất 1 item trong XML đó thỏa điều kiện là pass.
-    """
-    xml_code = detail.field.xml.ma_xml
+def evaluate_detail_group_on_item(detail_group, xml_data_map, item):
+    for detail in detail_group:
+        if not evaluate_detail_on_item(detail, xml_data_map, item):
+            return False
+    return True
+
+
+def evaluate_trigger_group_any_item(detail_group, xml_data_map):
+    if not detail_group:
+        return True
+
+    xml_code = detail_group[0].field.xml.ma_xml
     xml_info = xml_data_map.get(xml_code, {})
     items = xml_info.get("items", [])
 
     for item in items:
-        if evaluate_detail_on_item(detail, xml_data_map, item):
+        if evaluate_detail_group_on_item(detail_group, xml_data_map, item):
             return True
 
     return False
+
+
+def group_details_by_group_no(details):
+    grouped = defaultdict(list)
+    for d in details:
+        grouped[d.group_no or 1].append(d)
+
+    result = []
+    for group_no in sorted(grouped.keys()):
+        result.append((group_no, sorted(grouped[group_no], key=lambda x: (x.sort_order, x.id))))
+    return result
+
+
+def build_compare_text(detail):
+    if detail.compare_mode == "FIELD" and detail.compare_field:
+        return f"So sánh với field {detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
+
+    if detail.gia_tri:
+        if detail.condition.ma_dieu_kien == "BETWEEN":
+            return f"Giá trị phải nằm trong khoảng {detail.gia_tri}"
+        if detail.condition.ma_dieu_kien == "NOT_BETWEEN":
+            return f"Giá trị không được nằm trong khoảng {detail.gia_tri}"
+        return f"So sánh với giá trị {detail.gia_tri}"
+
+    return None
 
 
 def validate_one_hoso(xml_data_map, active_rules):
     warnings = []
 
     for rule in active_rules:
-        details = sorted(rule.details, key=lambda x: (x.sort_order, x.id))
+        details = sorted(rule.details, key=lambda x: (x.group_no or 1, x.sort_order, x.id))
         if not details:
             continue
 
@@ -268,6 +278,8 @@ def validate_one_hoso(xml_data_map, active_rules):
         for detail in validate_details:
             validate_group_by_xml[detail.field.xml.ma_xml].append(detail)
 
+        trigger_groups = group_details_by_group_no(trigger_details) if trigger_details else [(1, [])]
+
         for source_xml_code, source_validate_details in validate_group_by_xml.items():
             source_xml_info = xml_data_map.get(source_xml_code, {})
             source_items = source_xml_info.get("items", [])
@@ -275,67 +287,71 @@ def validate_one_hoso(xml_data_map, active_rules):
             if not source_items:
                 continue
 
-            local_triggers = []
-            external_triggers = []
-
-            for trigger in trigger_details:
-                trigger_xml_code = trigger.field.xml.ma_xml
-                if trigger_xml_code == source_xml_code:
-                    local_triggers.append(trigger)
-                else:
-                    external_triggers.append(trigger)
-
-            external_trigger_pass = True
-            for trigger in external_triggers:
-                if not evaluate_trigger_any_item(trigger, xml_data_map):
-                    external_trigger_pass = False
-                    break
-
-            if not external_trigger_pass:
-                continue
+            validate_groups = group_details_by_group_no(source_validate_details)
 
             for index, item in enumerate(source_items, start=1):
-                local_trigger_pass = True
-                for trigger in local_triggers:
-                    if not evaluate_detail_on_item(trigger, xml_data_map, item):
-                        local_trigger_pass = False
+                trigger_pass = False
+
+                for trigger_group_no, trigger_group_details in trigger_groups:
+                    if not trigger_group_details:
+                        trigger_pass = True
                         break
 
-                if not local_trigger_pass:
+                    local_trigger_details = []
+                    external_trigger_by_xml = defaultdict(list)
+
+                    for trigger in trigger_group_details:
+                        trigger_xml_code = trigger.field.xml.ma_xml
+                        if trigger_xml_code == source_xml_code:
+                            local_trigger_details.append(trigger)
+                        else:
+                            external_trigger_by_xml[trigger_xml_code].append(trigger)
+
+                    local_ok = evaluate_detail_group_on_item(local_trigger_details, xml_data_map, item)
+
+                    external_ok = True
+                    for _, ext_group in external_trigger_by_xml.items():
+                        if not evaluate_trigger_group_any_item(ext_group, xml_data_map):
+                            external_ok = False
+                            break
+
+                    if local_ok and external_ok:
+                        trigger_pass = True
+                        break
+
+                if not trigger_pass:
                     continue
 
-                validate_failed_fields = []
+                validate_pass = False
+                failed_fields = []
 
-                for detail in source_validate_details:
-                    ok = evaluate_detail_on_item(detail, xml_data_map, item)
+                for validate_group_no, validate_group_details in validate_groups:
+                    current_failed = []
 
-                    if not ok:
-                        compare_text = None
-                        if detail.compare_mode == "FIELD" and detail.compare_field:
-                            compare_text = (
-                                f"So sánh với field "
-                                f"{detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
-                            )
-                        elif detail.gia_tri:
-                            if detail.condition.ma_dieu_kien == "BETWEEN":
-                                compare_text = f"Giá trị phải nằm trong khoảng {detail.gia_tri}"
-                            elif detail.condition.ma_dieu_kien == "NOT_BETWEEN":
-                                compare_text = f"Giá trị không được nằm trong khoảng {detail.gia_tri}"
-                            else:
-                                compare_text = f"So sánh với giá trị {detail.gia_tri}"
+                    for detail in validate_group_details:
+                        ok = evaluate_detail_on_item(detail, xml_data_map, item)
 
-                        actual_value = get_value_from_item(item, detail.field.xml_path)
-                        if detail.date_part:
-                            actual_value = extract_date_part(actual_value, detail.date_part)
+                        if not ok:
+                            actual_value = get_value_from_item(item, detail.field.xml_path)
+                            if detail.date_part:
+                                actual_value = extract_date_part(actual_value, detail.date_part)
 
-                        validate_failed_fields.append({
-                            "field_name": detail.field.ten_truong,
-                            "field_path": detail.field.xml_path,
-                            "actual_value": actual_value,
-                            "compare_text": compare_text
-                        })
+                            current_failed.append({
+                                "field_name": detail.field.ten_truong,
+                                "field_path": detail.field.xml_path,
+                                "actual_value": actual_value,
+                                "compare_text": build_compare_text(detail)
+                            })
 
-                if validate_failed_fields:
+                    if not current_failed:
+                        validate_pass = True
+                        failed_fields = []
+                        break
+
+                    if not failed_fields:
+                        failed_fields = current_failed
+
+                if not validate_pass and failed_fields:
                     item_label = get_item_label(source_xml_code, item)
 
                     warnings.append({
@@ -344,7 +360,7 @@ def validate_one_hoso(xml_data_map, active_rules):
                         "rule_name": rule.ten_rule,
                         "message": f"{item_label}({index}): {rule.thong_bao}",
                         "severity": rule.severity,
-                        "failed_fields": validate_failed_fields
+                        "failed_fields": failed_fields
                     })
 
     return warnings
@@ -373,11 +389,15 @@ def run_validation(tree):
 
         hoso_info = get_hoso_identity(xml_data_map, hoso_index)
         warnings = validate_one_hoso(xml_data_map, active_rules)
+        raw_xml = get_hoso_raw_xml(hoso_node)
 
         if warnings:
             result_by_hoso.append({
                 "patient_code": hoso_info["patient_code"],
                 "patient_name": hoso_info["patient_name"],
+                "ngay_vao": hoso_info["ngay_vao"],
+                "ngay_vao_raw": hoso_info["ngay_vao_raw"],
+                "raw_xml": raw_xml,
                 "warnings": warnings
             })
 

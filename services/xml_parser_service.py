@@ -1,8 +1,11 @@
 from lxml import etree
+from datetime import datetime
+
 
 def parse_xml_content(xml_content):
     parser = etree.XMLParser(remove_blank_text=True, recover=True, encoding="utf-8")
     return etree.fromstring(xml_content.encode("utf-8"), parser)
+
 
 def parse_xml_file(file_path):
     parser = etree.XMLParser(remove_blank_text=True, recover=True, encoding="utf-8")
@@ -16,6 +19,7 @@ def get_hoso_nodes(tree):
     Mỗi HOSO tương ứng 1 bệnh nhân.
     """
     return tree.xpath(".//HOSO")
+
 
 def build_xml_data_map_for_hoso(hoso_node, xml_configs):
     """
@@ -57,14 +61,9 @@ def build_xml_data_map_for_hoso(hoso_node, xml_configs):
         items = noidungfile.xpath(xml_config.list_path)
         if not items:
             list_path = (xml_config.list_path or "").strip()
-
-            # bỏ ./ ở đầu nếu có
             normalized_path = list_path[2:] if list_path.startswith("./") else list_path
-
-            # lấy tag cuối cùng của path
             fallback_tag = normalized_path.split("/")[-1] if normalized_path else "EMPTY_ITEM"
 
-            # tạo node rỗng giả
             empty_item = etree.Element(fallback_tag)
             items = [empty_item]
 
@@ -91,6 +90,51 @@ def get_item_label(xml_code, item):
     return f"{xml_code}-{item.tag}"
 
 
+def format_yyyymmddhhmm(value):
+    if not value:
+        return ""
+
+    raw = str(value).strip()
+
+    # FIX CỨNG cho format 12 ký tự (YYYYMMDDHHMM)
+    if raw.isdigit() and len(raw) == 12:
+        try:
+            dt = datetime.strptime(raw, "%Y%m%d%H%M")
+            return dt.strftime("%d/%m/%Y %H:%M")
+        except:
+            pass
+
+    # fallback các format khác
+    formats = [
+        ("%Y%m%d%H%M%S", "%d/%m/%Y %H:%M:%S"),
+        ("%Y%m%d", "%d/%m/%Y"),
+        ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S"),
+        ("%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M"),
+        ("%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S"),
+        ("%Y-%m-%d", "%d/%m/%Y"),
+    ]
+
+    for input_fmt, output_fmt in formats:
+        try:
+            dt = datetime.strptime(raw, input_fmt)
+            return dt.strftime(output_fmt)
+        except:
+            continue
+
+    return raw
+
+
+def get_hoso_raw_xml(hoso_node):
+    try:
+        return etree.tostring(
+            hoso_node,
+            encoding="unicode",
+            pretty_print=True
+        )
+    except Exception:
+        return ""
+
+
 def get_hoso_identity(xml_data_map, hoso_index):
     """
     Lấy thông tin nhận diện hồ sơ/bệnh nhân để hiển thị kết quả.
@@ -101,14 +145,20 @@ def get_hoso_identity(xml_data_map, hoso_index):
 
     patient_code = ""
     patient_name = ""
+    ngay_vao_raw = ""
+    ngay_vao = ""
 
     if xml1_items:
         tong_hop = xml1_items[0]
         patient_code = get_value_from_item(tong_hop, "./MA_BN") or ""
         patient_name = get_value_from_item(tong_hop, "./HO_TEN") or ""
+        ngay_vao_raw = get_value_from_item(tong_hop, "./NGAY_VAO") or ""
+        ngay_vao = format_yyyymmddhhmm(ngay_vao_raw)
 
     return {
         "hoso_index": hoso_index,
         "patient_code": patient_code,
-        "patient_name": patient_name
+        "patient_name": patient_name,
+        "ngay_vao_raw": ngay_vao_raw,
+        "ngay_vao": ngay_vao
     }

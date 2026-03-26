@@ -56,11 +56,16 @@
     <h2 class="card-title">Danh sách detail</h2>
 
     {% if details %}
+        <div style="margin-bottom:10px; font-size:12px; color:#6b7280;">
+            Cùng <strong>nhóm logic</strong> = AND, khác nhóm = OR.
+        </div>
+
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
                         <th style="width: 80px;">ID</th>
+                        <th style="width: 80px;">Nhóm</th>
                         <th style="width: 80px;">Sort</th>
                         <th style="width: 110px;">Role</th>
                         <th style="width: 100px;">XML</th>
@@ -77,6 +82,7 @@
                     {% for d in details %}
                     <tr>
                         <td><strong>{{ d.id }}</strong></td>
+                        <td>{{ d.group_no or 1 }}</td>
                         <td>{{ d.sort_order }}</td>
                         <td>{{ d.condition_role }}</td>
                         <td>{{ d.field.xml.ma_xml }}</td>
@@ -90,7 +96,12 @@
                                 {{ d.gia_tri or '' }}
                             {% endif %}
                         </td>
-                        <td>{{ d.condition.ma_dieu_kien }} - {{ d.condition.ten_dieu_kien }}</td>
+                        <td>
+                            {{ d.condition.ma_dieu_kien }} - {{ d.condition.ten_dieu_kien }}
+                            {% if d.date_part %}
+                                <br><small style="color:#6b7280;">Date part: {{ d.date_part }}</small>
+                            {% endif %}
+                        </td>
                         <td>{{ d.gia_tri or '' }}</td>
                         <td>
                             <div class="actions">
