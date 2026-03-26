@@ -1,7 +1,7 @@
 import json
 
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from models import (
     db,
@@ -136,7 +136,7 @@ def list_rule_details(rule_id):
 
     keyword = (request.args.get("keyword") or "").strip()
     xml_id = (request.args.get("xml_id") or "").strip()
-    role = (request.args.get("role") or "").strip()
+    role = (request.args.get("role") or "").strip().upper()
 
     query = (
         RuleDetail.query
@@ -160,7 +160,7 @@ def list_rule_details(rule_id):
     if xml_id:
         query = query.filter(DanhMucTruongDuLieu.xml_id == int(xml_id))
 
-    if role:
+    if role in ["TRIGGER", "VALIDATE"]:
         query = query.filter(RuleDetail.condition_role == role)
 
     details = query.order_by(
@@ -169,12 +169,15 @@ def list_rule_details(rule_id):
         RuleDetail.sort_order.asc(),
         RuleDetail.id.asc()
     ).all()
+
+    grouped_details = build_grouped_details(details)
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
 
     return render_template(
         "rule_details.html",
         rule=rule,
         details=details,
+        grouped_details=grouped_details,
         keyword=keyword,
         xml_id=xml_id,
         role=role,
@@ -182,34 +185,37 @@ def list_rule_details(rule_id):
     )
 
 
-@rule_bp.route("/<int:rule_id>/details/create", methods=["GET", "POST"])
-def create_rule_detail(rule_id):
+@rule_bp.route("/<int:rule_id>/details/create/<string:role>", methods=["GET", "POST"])
+def create_rule_detail_group(rule_id, role):
     rule = Rule.query.get_or_404(rule_id)
+    role = normalize_role_or_404(role)
+
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
-
     error = None
 
     if request.method == "POST":
-        raw_payload = request.form.get("bulk_payload") or ""
+        raw_payload = request.form.get("group_payload") or ""
 
         try:
             payload = json.loads(raw_payload)
-            trigger_groups = payload.get("trigger_groups") or []
-            validate_items = payload.get("validate_items") or []
+            conditions_payload = payload.get("conditions") or []
 
-            normalized_details = normalize_bulk_details(
+            if not isinstance(conditions_payload, list) or not conditions_payload:
+                raise ValueError(f"Phải có ít nhất 1 {role.lower()}.")
+
+            next_group_no = get_next_group_no(rule.id, role)
+
+            normalized_details = normalize_group_details(
                 rule_id=rule.id,
-                trigger_groups=trigger_groups,
-                validate_items=validate_items
+                role=role,
+                group_no=next_group_no,
+                conditions_payload=conditions_payload
             )
-
-            if not normalized_details:
-                raise ValueError("Bạn chưa khai báo trigger hoặc validate nào.")
 
             for row in normalized_details:
                 detail = RuleDetail(
-                    rule_id=rule.id,
+                    rule_id=row["rule_id"],
                     field_id=row["field_id"],
                     condition_id=row["condition_id"],
                     gia_tri=row["gia_tri"],
@@ -233,160 +239,139 @@ def create_rule_detail(rule_id):
         "rule_detail_form.html",
         rule=rule,
         item=None,
+        role=role,
+        group_no=None,
         xmls=xmls,
-        fields=[],
-        compare_fields=[],
         conditions=conditions,
-        selected_xml_id="",
-        compare_xml_id="",
+        initial_payload=json.dumps({"conditions": []}, ensure_ascii=False),
         error=error
     )
 
 
-@rule_bp.route("/details/<int:detail_id>/edit", methods=["GET", "POST"])
-def edit_rule_detail(detail_id):
-    item = RuleDetail.query.get_or_404(detail_id)
-    rule = item.rule
+@rule_bp.route("/<int:rule_id>/details/<string:role>/<int:group_no>/edit", methods=["GET", "POST"])
+def edit_rule_detail_group(rule_id, role, group_no):
+    rule = Rule.query.get_or_404(rule_id)
+    role = normalize_role_or_404(role)
+
+    group_details = (
+        RuleDetail.query
+        .filter_by(rule_id=rule.id, condition_role=role, group_no=group_no)
+        .order_by(RuleDetail.sort_order.asc(), RuleDetail.id.asc())
+        .all()
+    )
+
+    if not group_details:
+        return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
+
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
     conditions = DanhMucDieuKien.query.order_by(DanhMucDieuKien.id.asc()).all()
-
-    selected_xml_id = (
-        request.form.get("xml_id")
-        or str(item.field.xml_id)
-    ).strip()
-
-    compare_xml_id = (
-        request.form.get("compare_xml_id")
-        or (str(item.compare_field.xml_id) if item.compare_field else "")
-    ).strip()
-
-    selected_xml_id_int = to_int_or_none(selected_xml_id)
-    compare_xml_id_int = to_int_or_none(compare_xml_id)
-
-    fields = []
-    compare_fields = []
     error = None
 
-    if selected_xml_id_int is not None:
-        fields = (
-            DanhMucTruongDuLieu.query
-            .filter_by(xml_id=selected_xml_id_int)
-            .order_by(DanhMucTruongDuLieu.id.asc())
-            .all()
-        )
-
-    if compare_xml_id_int is not None:
-        compare_fields = (
-            DanhMucTruongDuLieu.query
-            .filter_by(xml_id=compare_xml_id_int)
-            .order_by(DanhMucTruongDuLieu.id.asc())
-            .all()
-        )
-
     if request.method == "POST":
-        compare_mode = (request.form.get("compare_mode") or "VALUE").strip()
-        field_id = to_int_or_none(request.form.get("field_id"))
-        condition_id = to_int_or_none(request.form.get("condition_id"))
-        sort_order = to_int_or_none(request.form.get("sort_order")) or 1
-        group_no = to_int_or_none(request.form.get("group_no")) or 1
-        compare_field_id = to_int_or_none(request.form.get("compare_field_id"))
-        gia_tri = (request.form.get("gia_tri") or "").strip() or None
-        condition_role = (request.form.get("condition_role") or "VALIDATE").strip()
-        date_part = (request.form.get("date_part") or "").strip() or None
+        raw_payload = request.form.get("group_payload") or ""
 
-        if selected_xml_id_int is None:
-            error = "Bạn chưa chọn XML nguồn."
-        elif field_id is None:
-            error = "Bạn chưa chọn field nguồn."
-        elif condition_id is None:
-            error = "Bạn chưa chọn điều kiện."
-        elif compare_mode == "FIELD" and compare_xml_id_int is None:
-            error = "Bạn chưa chọn XML so sánh."
-        elif compare_mode == "FIELD" and compare_field_id is None:
-            error = "Bạn chưa chọn field so sánh."
-        else:
-            item.field_id = field_id
-            item.condition_id = condition_id
-            item.gia_tri = None if compare_mode == "FIELD" else gia_tri
-            item.condition_role = condition_role
-            item.sort_order = sort_order
-            item.group_no = group_no
-            item.compare_mode = compare_mode
-            item.compare_field_id = compare_field_id if compare_mode == "FIELD" else None
-            item.date_part = date_part
+        try:
+            payload = json.loads(raw_payload)
+            conditions_payload = payload.get("conditions") or []
+
+            if not isinstance(conditions_payload, list) or not conditions_payload:
+                raise ValueError(f"Nhóm {role.lower()} phải có ít nhất 1 điều kiện.")
+
+            normalized_details = normalize_group_details(
+                rule_id=rule.id,
+                role=role,
+                group_no=group_no,
+                conditions_payload=conditions_payload
+            )
+
+            RuleDetail.query.filter_by(
+                rule_id=rule.id,
+                condition_role=role,
+                group_no=group_no
+            ).delete()
+
+            for row in normalized_details:
+                detail = RuleDetail(
+                    rule_id=row["rule_id"],
+                    field_id=row["field_id"],
+                    condition_id=row["condition_id"],
+                    gia_tri=row["gia_tri"],
+                    condition_role=row["condition_role"],
+                    sort_order=row["sort_order"],
+                    compare_mode=row["compare_mode"],
+                    compare_field_id=row["compare_field_id"],
+                    date_part=row["date_part"],
+                    group_no=row["group_no"]
+                )
+                db.session.add(detail)
 
             db.session.commit()
             return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
 
+        except Exception as e:
+            db.session.rollback()
+            error = str(e)
+
+    initial_payload = build_initial_group_payload(group_details)
+
     return render_template(
         "rule_detail_form.html",
         rule=rule,
-        item=item,
+        item=group_details,
+        role=role,
+        group_no=group_no,
         xmls=xmls,
-        fields=fields,
-        compare_fields=compare_fields,
         conditions=conditions,
-        selected_xml_id=selected_xml_id,
-        compare_xml_id=compare_xml_id,
+        initial_payload=json.dumps(initial_payload, ensure_ascii=False),
         error=error
     )
 
 
-@rule_bp.route("/details/<int:detail_id>/delete", methods=["POST"])
-def delete_rule_detail(detail_id):
-    item = RuleDetail.query.get_or_404(detail_id)
-    rule_id = item.rule_id
-    db.session.delete(item)
+@rule_bp.route("/<int:rule_id>/details/<string:role>/<int:group_no>/delete", methods=["POST"])
+def delete_rule_detail_group(rule_id, role, group_no):
+    rule = Rule.query.get_or_404(rule_id)
+    role = normalize_role_or_404(role)
+
+    RuleDetail.query.filter_by(
+        rule_id=rule.id,
+        condition_role=role,
+        group_no=group_no
+    ).delete()
     db.session.commit()
-    return redirect(url_for("rule_bp.list_rule_details", rule_id=rule_id))
+
+    return redirect(url_for("rule_bp.list_rule_details", rule_id=rule.id))
 
 
-def normalize_bulk_details(rule_id, trigger_groups, validate_items):
+def normalize_role_or_404(role):
+    role = (role or "").strip().upper()
+    if role not in ["TRIGGER", "VALIDATE"]:
+        raise ValueError("Role không hợp lệ.")
+    return role
+
+
+def get_next_group_no(rule_id, role):
+    max_group = (
+        db.session.query(func.max(RuleDetail.group_no))
+        .filter(
+            RuleDetail.rule_id == rule_id,
+            RuleDetail.condition_role == role
+        )
+        .scalar()
+    )
+    return (max_group or 0) + 1
+
+
+def normalize_group_details(rule_id, role, group_no, conditions_payload):
     details = []
-    sort_order = 1
 
-    # Trigger groups: mỗi group là 1 OR-group, bên trong là AND
-    if not isinstance(trigger_groups, list):
-        raise ValueError("Dữ liệu trigger không hợp lệ.")
-
-    for idx, group in enumerate(trigger_groups, start=1):
-        conditions = group.get("conditions") or []
-
-        if not conditions:
-            continue
-
-        for cond in conditions:
-            details.append(build_detail_row(
-                rule_id=rule_id,
-                payload=cond,
-                condition_role="TRIGGER",
-                group_no=idx,
-                sort_order=sort_order
-            ))
-            sort_order += 1
-
-    # Validate: trước mắt gom 1 group AND duy nhất
-    if not isinstance(validate_items, list):
-        raise ValueError("Dữ liệu validate không hợp lệ.")
-
-    validate_group_no = 1
-    for cond in validate_items:
+    for idx, payload in enumerate(conditions_payload, start=1):
         details.append(build_detail_row(
             rule_id=rule_id,
-            payload=cond,
-            condition_role="VALIDATE",
-            group_no=validate_group_no,
-            sort_order=sort_order
+            payload=payload,
+            condition_role=role,
+            group_no=group_no,
+            sort_order=idx
         ))
-        sort_order += 1
-
-    has_trigger = any(x["condition_role"] == "TRIGGER" for x in details)
-    has_validate = any(x["condition_role"] == "VALIDATE" for x in details)
-
-    if not has_trigger:
-        raise ValueError("Phải có ít nhất 1 trigger.")
-    if not has_validate:
-        raise ValueError("Phải có ít nhất 1 validate.")
 
     return details
 
@@ -427,7 +412,9 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
     condition_code = (condition.ma_dieu_kien or "").upper()
     if condition_code in ["BETWEEN", "NOT_BETWEEN"] and compare_mode == "VALUE":
         if not gia_tri or "-" not in gia_tri:
-            raise ValueError(f"{condition_role}: điều kiện khoảng yêu cầu giá trị dạng start-end, ví dụ 18-06.")
+            raise ValueError(
+                f"{condition_role}: điều kiện khoảng yêu cầu giá trị dạng start-end, ví dụ 18-06."
+            )
 
     return {
         "rule_id": rule_id,
@@ -441,6 +428,59 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
         "date_part": date_part,
         "group_no": group_no
     }
+
+
+def build_initial_group_payload(group_details):
+    conditions = []
+
+    for d in group_details:
+        conditions.append({
+            "xml_id": d.field.xml_id if d.field else "",
+            "field_id": d.field_id or "",
+            "condition_id": d.condition_id or "",
+            "compare_mode": d.compare_mode or "VALUE",
+            "compare_xml_id": d.compare_field.xml_id if d.compare_field else "",
+            "compare_field_id": d.compare_field_id or "",
+            "gia_tri": d.gia_tri or "",
+            "date_part": d.date_part or ""
+        })
+
+    return {"conditions": conditions}
+
+
+def build_grouped_details(details):
+    grouped = {
+        "TRIGGER": [],
+        "VALIDATE": []
+    }
+
+    map_by_role = {
+        "TRIGGER": {},
+        "VALIDATE": {}
+    }
+
+    for d in details:
+        role = (d.condition_role or "").upper()
+        if role not in map_by_role:
+            continue
+
+        group_no = d.group_no or 1
+        if group_no not in map_by_role[role]:
+            map_by_role[role][group_no] = {
+                "role": role,
+                "group_no": group_no,
+                "details": []
+            }
+
+        map_by_role[role][group_no]["details"].append(d)
+
+    for role in ["TRIGGER", "VALIDATE"]:
+        grouped[role] = [
+            map_by_role[role][key]
+            for key in sorted(map_by_role[role].keys())
+        ]
+
+    return grouped
 
 
 def to_int_or_none(value):

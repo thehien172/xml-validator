@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">Chi tiết rule: {{ rule.ten_rule }}</h1>
-    <div class="page-subtitle">Theo dõi các trigger và validate detail của rule hiện tại.</div>
+    <div class="page-subtitle">Hiển thị theo nhóm logic để tạo / sửa / xem đều cùng một kiểu.</div>
 </div>
 
 <div class="card">
@@ -46,49 +46,101 @@
         <div class="actions">
             <button type="submit" class="btn btn-primary">Tìm</button>
             <a href="/rules/{{ rule.id }}/details" class="btn btn-secondary">Xóa lọc</a>
-            <a href="/rules/{{ rule.id }}/details/create" class="btn btn-primary">+ Thêm detail</a>
+            <a href="/rules/{{ rule.id }}/details/create/TRIGGER" class="btn btn-primary">+ Thêm trigger</a>
+            <a href="/rules/{{ rule.id }}/details/create/VALIDATE" class="btn btn-primary">+ Thêm validate</a>
             <a href="/rules" class="btn btn-secondary">Quay lại rules</a>
         </div>
     </form>
 </div>
 
 <div class="card">
-    <h2 class="card-title">Danh sách detail</h2>
+    <h2 class="card-title">Công thức logic</h2>
 
-    {% if details %}
-        <div style="margin-bottom:10px; font-size:12px; color:#6b7280;">
-            Cùng <strong>nhóm logic</strong> = AND, khác nhóm = OR.
+    <div style="margin-bottom: 14px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+        <div style="font-weight: 700; margin-bottom: 6px;">TRIGGER</div>
+        {% if grouped_details['TRIGGER'] %}
+            <div style="font-size: 14px; color: #374151;">
+                {% for group in grouped_details['TRIGGER'] %}
+                    {% if not loop.first %} OR {% endif %}
+                    (
+                    {% for d in group.details %}
+                        {% if not loop.first %} AND {% endif %}
+                        T{{ group.group_no }}.{{ loop.index }}
+                    {% endfor %}
+                    )
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="font-size: 14px; color: #6b7280;">Chưa có trigger.</div>
+        {% endif %}
+    </div>
+
+    <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+        <div style="font-weight: 700; margin-bottom: 6px;">VALIDATE</div>
+        {% if grouped_details['VALIDATE'] %}
+            <div style="font-size: 14px; color: #374151;">
+                {% for group in grouped_details['VALIDATE'] %}
+                    {% if not loop.first %} OR {% endif %}
+                    (
+                    {% for d in group.details %}
+                        {% if not loop.first %} AND {% endif %}
+                        V{{ group.group_no }}.{{ loop.index }}
+                    {% endfor %}
+                    )
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="font-size: 14px; color: #6b7280;">Chưa có validate.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if grouped_details['TRIGGER'] %}
+<div class="card">
+    <h2 class="card-title">Danh sách nhóm TRIGGER</h2>
+
+    {% for group in grouped_details['TRIGGER'] %}
+    <div style="border:1px solid #d1d5db; border-radius:10px; padding:14px; margin-bottom:14px; background:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;">
+            <div>
+                <div style="font-weight:700;">Nhóm Trigger {{ group.group_no }}</div>
+                <div style="font-size:12px; color:#6b7280;">Các điều kiện trong nhóm này nối bằng AND.</div>
+            </div>
+            <div class="actions">
+                <a class="btn btn-secondary" href="/rules/{{ rule.id }}/details/TRIGGER/{{ group.group_no }}/edit">Sửa nhóm</a>
+                <form class="inline" method="POST" action="/rules/{{ rule.id }}/details/TRIGGER/{{ group.group_no }}/delete" onsubmit="return confirm('Xóa toàn bộ nhóm trigger này?');">
+                    <button class="btn btn-danger" type="submit">Xóa nhóm</button>
+                </form>
+            </div>
         </div>
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 80px;">ID</th>
-                        <th style="width: 80px;">Nhóm</th>
-                        <th style="width: 80px;">Sort</th>
-                        <th style="width: 110px;">Role</th>
-                        <th style="width: 100px;">XML</th>
+                        <th style="width:90px;">Ký hiệu</th>
+                        <th style="width:100px;">XML</th>
                         <th>Field</th>
                         <th>Path</th>
-                        <th style="width: 120px;">Kiểu so sánh</th>
-                        <th>So sánh với</th>
+                        <th style="width:130px;">So sánh</th>
                         <th>Condition</th>
-                        <th style="width: 140px;">Giá trị</th>
-                        <th style="width: 180px;">Thao tác</th>
+                        <th>Giá trị / Field so sánh</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for d in details %}
+                    {% for d in group.details %}
                     <tr>
-                        <td><strong>{{ d.id }}</strong></td>
-                        <td>{{ d.group_no or 1 }}</td>
-                        <td>{{ d.sort_order }}</td>
-                        <td>{{ d.condition_role }}</td>
+                        <td><strong>T{{ group.group_no }}.{{ loop.index }}</strong></td>
                         <td>{{ d.field.xml.ma_xml }}</td>
                         <td>{{ d.field.ten_truong }}</td>
                         <td><code>{{ d.field.xml_path }}</code></td>
                         <td>{{ d.compare_mode }}</td>
+                        <td>
+                            {{ d.condition.ma_dieu_kien }} - {{ d.condition.ten_dieu_kien }}
+                            {% if d.date_part %}
+                                <br><small style="color:#6b7280;">Date part: {{ d.date_part }}</small>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if d.compare_mode == 'FIELD' and d.compare_field %}
                                 {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
@@ -96,28 +148,82 @@
                                 {{ d.gia_tri or '' }}
                             {% endif %}
                         </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if grouped_details['VALIDATE'] %}
+<div class="card">
+    <h2 class="card-title">Danh sách nhóm VALIDATE</h2>
+
+    {% for group in grouped_details['VALIDATE'] %}
+    <div style="border:1px solid #d1d5db; border-radius:10px; padding:14px; margin-bottom:14px; background:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;">
+            <div>
+                <div style="font-weight:700;">Nhóm Validate {{ group.group_no }}</div>
+                <div style="font-size:12px; color:#6b7280;">Các điều kiện trong nhóm này nối bằng AND.</div>
+            </div>
+            <div class="actions">
+                <a class="btn btn-secondary" href="/rules/{{ rule.id }}/details/VALIDATE/{{ group.group_no }}/edit">Sửa nhóm</a>
+                <form class="inline" method="POST" action="/rules/{{ rule.id }}/details/VALIDATE/{{ group.group_no }}/delete" onsubmit="return confirm('Xóa toàn bộ nhóm validate này?');">
+                    <button class="btn btn-danger" type="submit">Xóa nhóm</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:90px;">Ký hiệu</th>
+                        <th style="width:100px;">XML</th>
+                        <th>Field</th>
+                        <th>Path</th>
+                        <th style="width:130px;">So sánh</th>
+                        <th>Condition</th>
+                        <th>Giá trị / Field so sánh</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in group.details %}
+                    <tr>
+                        <td><strong>V{{ group.group_no }}.{{ loop.index }}</strong></td>
+                        <td>{{ d.field.xml.ma_xml }}</td>
+                        <td>{{ d.field.ten_truong }}</td>
+                        <td><code>{{ d.field.xml_path }}</code></td>
+                        <td>{{ d.compare_mode }}</td>
                         <td>
                             {{ d.condition.ma_dieu_kien }} - {{ d.condition.ten_dieu_kien }}
                             {% if d.date_part %}
                                 <br><small style="color:#6b7280;">Date part: {{ d.date_part }}</small>
                             {% endif %}
                         </td>
-                        <td>{{ d.gia_tri or '' }}</td>
                         <td>
-                            <div class="actions">
-                                <a class="btn btn-secondary" href="/rules/details/{{ d.id }}/edit">Sửa</a>
-                                <form class="inline" method="POST" action="/rules/details/{{ d.id }}/delete" onsubmit="return confirm('Xóa detail này?');">
-                                    <button class="btn btn-danger" type="submit">Xóa</button>
-                                </form>
-                            </div>
+                            {% if d.compare_mode == 'FIELD' and d.compare_field %}
+                                {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
+                            {% else %}
+                                {{ d.gia_tri or '' }}
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    {% else %}
-        <div class="empty-state">Chưa có detail nào cho rule này.</div>
-    {% endif %}
+    </div>
+    {% endfor %}
 </div>
+{% endif %}
+
+{% if not grouped_details['TRIGGER'] and not grouped_details['VALIDATE'] %}
+<div class="card">
+    <div class="empty-state">Chưa có detail nào cho rule này.</div>
+</div>
+{% endif %}
 {% endblock %}
