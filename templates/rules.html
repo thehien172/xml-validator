@@ -2,6 +2,70 @@
 {% block title %}Rules{% endblock %}
 
 {% block content %}
+<style>
+    .status-toggle-form {
+        margin: 0;
+    }
+
+    .status-switch {
+        position: relative;
+        display: inline-block;
+        width: 54px;
+        height: 30px;
+        vertical-align: middle;
+    }
+
+    .status-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .status-slider {
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+        background: #d1d5db;
+        border-radius: 999px;
+        transition: 0.2s ease;
+    }
+
+    .status-slider:before {
+        content: "";
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        left: 4px;
+        top: 4px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.2s ease;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    }
+
+    .status-switch input:checked + .status-slider {
+        background: #22c55e;
+    }
+
+    .status-switch input:checked + .status-slider:before {
+        transform: translateX(24px);
+    }
+
+    .status-text {
+        display: inline-block;
+        margin-left: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        vertical-align: middle;
+        min-width: 46px;
+    }
+
+    .unit-list div {
+        margin-bottom: 4px;
+    }
+</style>
+
 <div class="page-header">
     <h1 class="page-title">Danh sách rules</h1>
     <div class="page-subtitle">Quản lý các rule kiểm tra và truy cập nhanh vào chi tiết từng rule.</div>
@@ -37,6 +101,27 @@
                     <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Đang tắt</option>
                 </select>
             </div>
+
+            <div class="col-4">
+                <label>Phạm vi áp dụng</label>
+                <select name="apply_scope" id="filter_apply_scope">
+                    <option value="">-- Tất cả --</option>
+                    <option value="ALL" {% if apply_scope == 'ALL' %}selected{% endif %}>Tất cả đơn vị</option>
+                    <option value="UNIT" {% if apply_scope == 'UNIT' %}selected{% endif %}>Theo đơn vị</option>
+                </select>
+            </div>
+
+            <div class="col-8" id="filter-unit-box" style="display: none;">
+                <label>Đơn vị áp dụng</label>
+                <select name="don_vi_id">
+                    <option value="">-- Tất cả đơn vị --</option>
+                    {% for u in units %}
+                        <option value="{{ u.id }}" {% if don_vi_id and don_vi_id|int == u.id %}selected{% endif %}>
+                            {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
         <div class="actions">
@@ -55,13 +140,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 90px;">ID</th>
+                        <th style="width: 70px;">ID</th>
                         <th style="width: 120px;">Bộ rule</th>
-                        <th>Tên rule</th>
-                        <th>Thông báo</th>
+                        <th style="min-width: 220px;">Tên rule</th>
+                        <!-- <th style="min-width: 260px;">Thông báo</th> -->
                         <th style="width: 120px;">Severity</th>
-                        <th style="width: 130px;">Trạng thái</th>
-                        <th style="width: 100px;">Số detail</th>
+                        <th style="width: 150px;">Trạng thái</th>
+                        <th style="min-width: 220px;">Đơn vị áp dụng</th>
+                        <!-- <th style="width: 100px;">Số detail</th> -->
                         <th style="width: 260px;">Thao tác</th>
                     </tr>
                 </thead>
@@ -70,8 +156,8 @@
                     <tr>
                         <td><strong>{{ r.id }}</strong></td>
                         <td>{{ r.bo_rule.ma_bo_rule }}</td>
-                        <td>{{ r.ten_rule }}</td>
-                        <td>{{ r.thong_bao }}</td>
+                        <td style="text-align:left">{{ r.ten_rule }}</td>
+                        <!-- <td>{{ r.thong_bao }}</td> -->
                         <td>
                             {% if r.severity == 'ERROR' %}
                                 <span class="badge badge-error">{{ r.severity }}</span>
@@ -80,16 +166,37 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if r.is_active %}
-                                <span class="badge badge-info">ACTIVE</span>
+                            <form class="status-toggle-form" method="POST" action="/rules/{{ r.id }}/toggle-status">
+                                <label class="status-switch" title="{% if r.is_active %}Đang bật{% else %}Đang tắt{% endif %}">
+                                    <input
+                                        type="checkbox"
+                                        name="is_active"
+                                        value="1"
+                                        {% if r.is_active %}checked{% endif %}
+                                        onchange="this.form.submit()"
+                                    >
+                                    <span class="status-slider"></span>
+                                </label>
+                            </form>
+                        </td>
+                        <td>
+                            {% set applied_units = rule_unit_map.get(r.id, []) %}
+                            {% if r.apply_scope == 'ALL' %}
+                                <span style="color: #666;">Tất cả đơn vị</span>
+                            {% elif applied_units %}
+                                <div class="unit-list">
+                                    {% for u in applied_units %}
+                                        <div>{{ u.ma_don_vi }} - {{ u.ten_don_vi }}</div>
+                                    {% endfor %}
+                                </div>
                             {% else %}
-                                <span class="badge badge-error">INACTIVE</span>
+                                <span style="color: #999;">Chưa gán đơn vị</span>
                             {% endif %}
                         </td>
-                        <td>{{ r.details|length }}</td>
+                        <!-- <td>{{ r.details|length }}</td> -->
                         <td>
-                            <div class="actions">
-                                <a class="btn btn-primary" href="/rules/{{ r.id }}/details">Chi tiết</a>
+                            <div class="actions" style="margin-top:0px">
+                                <a class="btn btn-primary" href="/rules/{{ r.id }}/details">Cấu hình</a>
                                 <a class="btn btn-secondary" href="/rules/{{ r.id }}/edit">Sửa</a>
                                 <form class="inline" method="POST" action="/rules/{{ r.id }}/delete" onsubmit="return confirm('Xóa rule này?');">
                                     <button class="btn btn-danger" type="submit">Xóa</button>
@@ -105,4 +212,21 @@
         <div class="empty-state">Chưa có dữ liệu rule.</div>
     {% endif %}
 </div>
+
+<script>
+(function () {
+    var scopeSelect = document.getElementById("filter_apply_scope");
+    var unitBox = document.getElementById("filter-unit-box");
+
+    function toggleUnitFilter() {
+        if (!scopeSelect || !unitBox) return;
+        unitBox.style.display = scopeSelect.value === "UNIT" ? "block" : "none";
+    }
+
+    if (scopeSelect) {
+        scopeSelect.addEventListener("change", toggleUnitFilter);
+        toggleUnitFilter();
+    }
+})();
+</script>
 {% endblock %}

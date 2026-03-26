@@ -26,7 +26,10 @@ def list_fields():
     if xml_id:
         query = query.filter(DanhMucTruongDuLieu.xml_id == int(xml_id))
 
-    fields = query.order_by(DanhMucTruongDuLieu.id.asc()).all()
+    fields = query.order_by(
+        DanhMucXml.id.asc(),
+        DanhMucTruongDuLieu.ten_truong.asc()
+    ).all()
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
 
     return render_template(

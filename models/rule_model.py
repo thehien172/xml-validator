@@ -24,10 +24,30 @@ class Rule(db.Model):
     severity = db.Column(db.String(50), nullable=False, default="WARNING")
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
+    apply_scope = db.Column(db.String(20), nullable=False, default="ALL")
+
     bo_rule = db.relationship("BoRule", backref="rules")
 
     def __repr__(self):
         return f"<Rule {self.ten_rule}>"
+
+
+class RuleUnit(db.Model):
+    __tablename__ = "rule_unit"
+
+    id = db.Column(db.Integer, primary_key=True)
+    rule_id = db.Column(db.Integer, db.ForeignKey("rule.id"), nullable=False)
+    don_vi_id = db.Column(db.Integer, db.ForeignKey("don_vi.id"), nullable=False)
+
+    rule = db.relationship("Rule", backref="rule_units")
+    don_vi = db.relationship("DonVi")
+
+    __table_args__ = (
+        db.UniqueConstraint("rule_id", "don_vi_id", name="uq_rule_unit_rule_don_vi"),
+    )
+
+    def __repr__(self):
+        return f"<RuleUnit rule_id={self.rule_id} don_vi_id={self.don_vi_id}>"
 
 
 class RuleDetail(db.Model):

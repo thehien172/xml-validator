@@ -42,7 +42,10 @@ def index():
                     file.save(file_path)
 
                     tree = parse_xml_file(file_path)
-                    hoso_results, stats = run_validation(tree)
+
+                    # Upload file thủ công thì không gắn đơn vị cụ thể
+                    # => chỉ áp dụng các rule scope ALL
+                    hoso_results, stats = run_validation(tree, don_vi_id=None)
 
             elif mode == "l2":
                 don_vi_id = request.form.get("don_vi_id")

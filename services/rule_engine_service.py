@@ -1,6 +1,9 @@
 from collections import defaultdict
 from datetime import datetime
-from models import DanhMucXml, Rule
+
+from sqlalchemy import or_
+
+from models import DanhMucXml, Rule, RuleUnit
 from services.xml_parser_service import (
     get_hoso_nodes,
     build_xml_data_map_for_hoso,
@@ -366,16 +369,35 @@ def validate_one_hoso(xml_data_map, active_rules):
     return warnings
 
 
-def run_validation(tree):
-    xml_configs = DanhMucXml.query.all()
-
-    active_rules = (
+def get_active_rules_for_unit(don_vi_id=None):
+    query = (
         Rule.query
         .join(Rule.bo_rule)
         .filter(Rule.is_active.is_(True))
         .filter(Rule.bo_rule.has(is_active=True))
-        .all()
     )
+
+    if don_vi_id:
+        query = (
+            query
+            .outerjoin(RuleUnit, RuleUnit.rule_id == Rule.id)
+            .filter(
+                or_(
+                    Rule.apply_scope == "ALL",
+                    (Rule.apply_scope == "UNIT") & (RuleUnit.don_vi_id == don_vi_id)
+                )
+            )
+            .distinct()
+        )
+    else:
+        query = query.filter(Rule.apply_scope == "ALL")
+
+    return query.all()
+
+
+def run_validation(tree, don_vi_id=None):
+    xml_configs = DanhMucXml.query.all()
+    active_rules = get_active_rules_for_unit(don_vi_id=don_vi_id)
 
     hoso_nodes = get_hoso_nodes(tree)
     result_by_hoso = []

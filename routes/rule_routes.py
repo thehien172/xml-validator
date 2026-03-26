@@ -7,7 +7,9 @@ from models import (
     db,
     BoRule,
     Rule,
+    RuleUnit,
     RuleDetail,
+    DonVi,
     DanhMucTruongDuLieu,
     DanhMucDieuKien,
     DanhMucXml
@@ -15,6 +17,17 @@ from models import (
 
 rule_bp = Blueprint("rule_bp", __name__, url_prefix="/rules")
 
+@rule_bp.route("/<int:rule_id>/toggle-status", methods=["POST"])
+def toggle_rule_status(rule_id):
+    rule = Rule.query.get_or_404(rule_id)
+
+    # checkbox có gửi thì là bật, không gửi là tắt
+    rule.is_active = "is_active" in request.form
+
+    db.session.commit()
+
+    # quay lại trang list (giữ filter nếu có)
+    return redirect(request.referrer or url_for("rule_bp.list_rules"))
 
 @rule_bp.route("/api/fields-by-xml", methods=["GET"])
 def get_fields_by_xml():
@@ -48,6 +61,8 @@ def list_rules():
     keyword = (request.args.get("keyword") or "").strip()
     status = (request.args.get("status") or "").strip()
     bo_rule_id = (request.args.get("bo_rule_id") or "").strip()
+    apply_scope = (request.args.get("apply_scope") or "").strip().upper()
+    don_vi_id = (request.args.get("don_vi_id") or "").strip()
 
     query = Rule.query.join(BoRule)
 
@@ -70,8 +85,19 @@ def list_rules():
     if bo_rule_id:
         query = query.filter(Rule.bo_rule_id == int(bo_rule_id))
 
+    if apply_scope in ["ALL", "UNIT"]:
+        query = query.filter(Rule.apply_scope == apply_scope)
+
+    if don_vi_id:
+        query = query.join(RuleUnit, RuleUnit.rule_id == Rule.id).filter(RuleUnit.don_vi_id == int(don_vi_id))
+
     rules = query.order_by(Rule.id.asc()).all()
     bo_rules = BoRule.query.order_by(BoRule.id.asc()).all()
+    units = DonVi.query.order_by(DonVi.id.asc()).all()
+
+    rule_unit_map = {}
+    for rule in rules:
+        rule_unit_map[rule.id] = [ru.don_vi for ru in getattr(rule, "rule_units", []) if ru.don_vi]
 
     return render_template(
         "rules.html",
@@ -79,50 +105,140 @@ def list_rules():
         keyword=keyword,
         status=status,
         bo_rule_id=bo_rule_id,
-        bo_rules=bo_rules
+        bo_rules=bo_rules,
+        apply_scope=apply_scope,
+        don_vi_id=don_vi_id,
+        units=units,
+        rule_unit_map=rule_unit_map
     )
 
 
 @rule_bp.route("/create", methods=["GET", "POST"])
 def create_rule():
     bo_rules = BoRule.query.order_by(BoRule.id.asc()).all()
+    units = DonVi.query.order_by(DonVi.id.asc()).all()
+    error = None
 
     if request.method == "POST":
-        rule = Rule(
-            bo_rule_id=int(request.form.get("bo_rule_id")),
-            ten_rule=request.form.get("ten_rule", "").strip(),
-            thong_bao=request.form.get("thong_bao", "").strip(),
-            severity=request.form.get("severity", "WARNING").strip(),
-            is_active=True if request.form.get("is_active") == "1" else False
-        )
-        db.session.add(rule)
-        db.session.commit()
-        return redirect(url_for("rule_bp.list_rules"))
+        try:
+            bo_rule_id = request.form.get("bo_rule_id", type=int)
+            ten_rule = (request.form.get("ten_rule") or "").strip()
+            thong_bao = (request.form.get("thong_bao") or "").strip()
+            severity = (request.form.get("severity") or "WARNING").strip()
+            is_active = True if request.form.get("is_active") == "1" else False
+            apply_scope = ((request.form.get("apply_scope") or "ALL").strip().upper())
+            unit_ids = request.form.getlist("unit_ids")
 
-    return render_template("rule_form.html", item=None, bo_rules=bo_rules)
+            if not bo_rule_id:
+                raise ValueError("Vui lòng chọn bộ rule.")
+            if not ten_rule:
+                raise ValueError("Vui lòng nhập tên rule.")
+            if not thong_bao:
+                raise ValueError("Vui lòng nhập thông báo.")
+            if apply_scope not in ["ALL", "UNIT"]:
+                raise ValueError("Phạm vi áp dụng không hợp lệ.")
+            if apply_scope == "UNIT" and not unit_ids:
+                raise ValueError("Vui lòng chọn ít nhất 1 đơn vị.")
+
+            rule = Rule(
+                bo_rule_id=bo_rule_id,
+                ten_rule=ten_rule,
+                thong_bao=thong_bao,
+                severity=severity,
+                is_active=is_active,
+                apply_scope=apply_scope
+            )
+            db.session.add(rule)
+            db.session.flush()
+
+            if apply_scope == "UNIT":
+                for uid in unit_ids:
+                    uid_int = int(uid)
+                    db.session.add(RuleUnit(rule_id=rule.id, don_vi_id=uid_int))
+
+            db.session.commit()
+            return redirect(url_for("rule_bp.list_rules"))
+
+        except Exception as e:
+            db.session.rollback()
+            error = str(e)
+
+    return render_template(
+        "rule_form.html",
+        item=None,
+        bo_rules=bo_rules,
+        units=units,
+        selected_unit_ids=[],
+        error=error
+    )
 
 
 @rule_bp.route("/<int:rule_id>/edit", methods=["GET", "POST"])
 def edit_rule(rule_id):
     item = Rule.query.get_or_404(rule_id)
     bo_rules = BoRule.query.order_by(BoRule.id.asc()).all()
+    units = DonVi.query.order_by(DonVi.id.asc()).all()
+    error = None
 
     if request.method == "POST":
-        item.bo_rule_id = int(request.form.get("bo_rule_id"))
-        item.ten_rule = request.form.get("ten_rule", "").strip()
-        item.thong_bao = request.form.get("thong_bao", "").strip()
-        item.severity = request.form.get("severity", "WARNING").strip()
-        item.is_active = True if request.form.get("is_active") == "1" else False
-        db.session.commit()
-        return redirect(url_for("rule_bp.list_rules"))
+        try:
+            bo_rule_id = request.form.get("bo_rule_id", type=int)
+            ten_rule = (request.form.get("ten_rule") or "").strip()
+            thong_bao = (request.form.get("thong_bao") or "").strip()
+            severity = (request.form.get("severity") or "WARNING").strip()
+            is_active = True if request.form.get("is_active") == "1" else False
+            apply_scope = ((request.form.get("apply_scope") or "ALL").strip().upper())
+            unit_ids = request.form.getlist("unit_ids")
 
-    return render_template("rule_form.html", item=item, bo_rules=bo_rules)
+            if not bo_rule_id:
+                raise ValueError("Vui lòng chọn bộ rule.")
+            if not ten_rule:
+                raise ValueError("Vui lòng nhập tên rule.")
+            if not thong_bao:
+                raise ValueError("Vui lòng nhập thông báo.")
+            if apply_scope not in ["ALL", "UNIT"]:
+                raise ValueError("Phạm vi áp dụng không hợp lệ.")
+            if apply_scope == "UNIT" and not unit_ids:
+                raise ValueError("Vui lòng chọn ít nhất 1 đơn vị.")
+
+            item.bo_rule_id = bo_rule_id
+            item.ten_rule = ten_rule
+            item.thong_bao = thong_bao
+            item.severity = severity
+            item.is_active = is_active
+            item.apply_scope = apply_scope
+
+            RuleUnit.query.filter_by(rule_id=item.id).delete()
+
+            if apply_scope == "UNIT":
+                for uid in unit_ids:
+                    uid_int = int(uid)
+                    db.session.add(RuleUnit(rule_id=item.id, don_vi_id=uid_int))
+
+            db.session.commit()
+            return redirect(url_for("rule_bp.list_rules"))
+
+        except Exception as e:
+            db.session.rollback()
+            error = str(e)
+
+    selected_unit_ids = [str(ru.don_vi_id) for ru in getattr(item, "rule_units", [])]
+
+    return render_template(
+        "rule_form.html",
+        item=item,
+        bo_rules=bo_rules,
+        units=units,
+        selected_unit_ids=selected_unit_ids,
+        error=error
+    )
 
 
 @rule_bp.route("/<int:rule_id>/delete", methods=["POST"])
 def delete_rule(rule_id):
     item = Rule.query.get_or_404(rule_id)
 
+    RuleUnit.query.filter_by(rule_id=item.id).delete()
     RuleDetail.query.filter_by(rule_id=item.id).delete()
     db.session.delete(item)
     db.session.commit()
@@ -172,6 +288,7 @@ def list_rule_details(rule_id):
 
     grouped_details = build_grouped_details(details)
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
+    applied_units = [ru.don_vi for ru in getattr(rule, "rule_units", []) if ru.don_vi]
 
     return render_template(
         "rule_details.html",
@@ -181,7 +298,8 @@ def list_rule_details(rule_id):
         keyword=keyword,
         xml_id=xml_id,
         role=role,
-        xmls=xmls
+        xmls=xmls,
+        applied_units=applied_units
     )
 
 

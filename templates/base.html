@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -132,10 +133,21 @@
             gap: 16px;
         }
 
-        .col-12 { grid-column: span 12; }
-        .col-6 { grid-column: span 6; }
-        .col-4 { grid-column: span 4; }
-        .col-3 { grid-column: span 3; }
+        .col-12 {
+            grid-column: span 12;
+        }
+
+        .col-6 {
+            grid-column: span 6;
+        }
+
+        .col-4 {
+            grid-column: span 4;
+        }
+
+        .col-3 {
+            grid-column: span 3;
+        }
 
         label {
             display: block;
@@ -293,6 +305,7 @@
             text-align: left;
             padding: 14px 12px;
             border-bottom: 1px solid var(--border);
+            text-align: center;
         }
 
         td {
@@ -300,6 +313,8 @@
             border-bottom: 1px solid #e5e7eb;
             vertical-align: top;
             font-size: 14px;
+            vertical-align: middle;
+            text-align: center;
         }
 
         tbody tr:hover {
@@ -331,6 +346,7 @@
         }
 
         @media (max-width: 900px) {
+
             .col-6,
             .col-4,
             .col-3 {
@@ -347,6 +363,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="page-shell">
         <div class="topbar">
@@ -367,4 +384,5 @@
         </div>
     </div>
 </body>
+
 </html>

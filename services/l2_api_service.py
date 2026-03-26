@@ -517,4 +517,4 @@ def validate_from_l2(don_vi, tu_ngay, den_ngay):
     xml_content = l2_get_xml_content(don_vi, tu_ngay, den_ngay, ds_malk)
     tree = parse_xml_content(xml_content)
 
-    return run_validation(tree)
+    return run_validation(tree, don_vi.id)
