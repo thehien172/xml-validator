@@ -20,6 +20,11 @@
         <label>List path</label>
         <input type="text" name="list_path" required value="{{ item.list_path if item else '' }}" placeholder="./TONG_HOP">
 
+        <label>Loại XML</label>
+        <select name="item_type">
+            <option value="SINGLE" {% if item and item.item_type == 'SINGLE' %}selected{% endif %}>SINGLE</option>
+            <option value="MULTI" {% if not item or item.item_type == 'MULTI' %}selected{% endif %}>MULTI</option>
+        </select>
         <div class="actions">
             <button type="submit" class="btn btn-primary">Lưu</button>
             <a href="/xmls" class="btn btn-secondary">Quay lại</a>

@@ -63,7 +63,7 @@ def list_rules():
     bo_rule_id = (request.args.get("bo_rule_id") or "").strip()
     apply_scope = (request.args.get("apply_scope") or "").strip().upper()
     don_vi_id = (request.args.get("don_vi_id") or "").strip()
-
+    
     query = Rule.query.join(BoRule)
 
     if keyword:
@@ -76,7 +76,9 @@ def list_rules():
                 BoRule.ten_bo_rule.ilike(f"%{keyword}%")
             )
         )
-
+    run_scope = (request.args.get("run_scope") or "").strip()
+    if run_scope:
+        query = query.filter(Rule.run_scope == run_scope)
     if status == "active":
         query = query.filter(Rule.is_active.is_(True))
     elif status == "inactive":
@@ -128,7 +130,7 @@ def create_rule():
             is_active = True if request.form.get("is_active") == "1" else False
             apply_scope = ((request.form.get("apply_scope") or "ALL").strip().upper())
             unit_ids = request.form.getlist("unit_ids")
-
+            run_scope = (request.form.get("run_scope") or "ONE_HOSO").strip().upper()
             if not bo_rule_id:
                 raise ValueError("Vui lòng chọn bộ rule.")
             if not ten_rule:
@@ -146,7 +148,8 @@ def create_rule():
                 thong_bao=thong_bao,
                 severity=severity,
                 is_active=is_active,
-                apply_scope=apply_scope
+                apply_scope=apply_scope,
+                run_scope=run_scope
             )
             db.session.add(rule)
             db.session.flush()
@@ -189,6 +192,7 @@ def edit_rule(rule_id):
             is_active = True if request.form.get("is_active") == "1" else False
             apply_scope = ((request.form.get("apply_scope") or "ALL").strip().upper())
             unit_ids = request.form.getlist("unit_ids")
+            run_scope = (request.form.get("run_scope") or "ONE_HOSO").strip().upper()
 
             if not bo_rule_id:
                 raise ValueError("Vui lòng chọn bộ rule.")
@@ -207,6 +211,7 @@ def edit_rule(rule_id):
             item.severity = severity
             item.is_active = is_active
             item.apply_scope = apply_scope
+            item.run_scope = run_scope
 
             RuleUnit.query.filter_by(rule_id=item.id).delete()
 

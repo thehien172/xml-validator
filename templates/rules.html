@@ -51,16 +51,6 @@
         transform: translateX(24px);
     }
 
-    .status-text {
-        display: inline-block;
-        margin-left: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #374151;
-        vertical-align: middle;
-        min-width: 46px;
-    }
-
     .unit-list div {
         margin-bottom: 4px;
     }
@@ -111,6 +101,15 @@
                 </select>
             </div>
 
+            <div class="col-4">
+                <label>Phạm vi</label>
+                <select name="run_scope">
+                    <option value="">-- Tất cả --</option>
+                    <option value="ONE_HOSO" {% if run_scope == 'ONE_HOSO' %}selected{% endif %}>Một hồ sơ</option>
+                    <option value="ALL_HOSO" {% if run_scope == 'ALL_HOSO' %}selected{% endif %}>Toàn bộ hồ sơ</option>
+                </select>
+            </div>
+
             <div class="col-8" id="filter-unit-box" style="display: none;">
                 <label>Đơn vị áp dụng</label>
                 <select name="don_vi_id">
@@ -140,15 +139,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 70px;">STT</th>
-                        <th style="width: 120px;">Bộ rule</th>
+                        <th style="width: 50px;">STT</th>
+                        <th style="width: 100px;">Bộ rule</th>
                         <th style="min-width: 220px;">Tên rule</th>
-                        <!-- <th style="min-width: 260px;">Thông báo</th> -->
-                        <th style="width: 120px;">Severity</th>
-                        <th style="width: 150px;">Trạng thái</th>
-                        <th style="min-width: 220px;">Đơn vị áp dụng</th>
-                        <!-- <th style="width: 100px;">Số detail</th> -->
-                        <th style="width: 260px;">Thao tác</th>
+                        <th style="width: 100px;">Mức độ</th>
+                        <th style="width: 140px;">Phạm vi</th>
+                        <th style="min-width: 180px;">Đơn vị áp dụng</th>
+                        <th style="width: 100px;">Trạng thái</th>
+                        <th style="width: 300px;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -157,12 +155,32 @@
                         <td><strong>{{ loop.index }}</strong></td>
                         <td>{{ r.bo_rule.ma_bo_rule }}</td>
                         <td style="text-align:left">{{ r.ten_rule }}</td>
-                        <!-- <td>{{ r.thong_bao }}</td> -->
                         <td>
                             {% if r.severity == 'ERROR' %}
                                 <span class="badge badge-error">{{ r.severity }}</span>
                             {% else %}
                                 <span class="badge badge-warning">{{ r.severity }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.run_scope == 'ALL_HOSO' %}
+                                <span">Tất cả hồ sơ</span>
+                            {% else %}
+                                <span>Một hồ sơ</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set applied_units = rule_unit_map.get(r.id, []) %}
+                            {% if r.apply_scope == 'ALL' %}
+                                <span style="color: #666;">Tất cả đơn vị</span>
+                            {% elif applied_units %}
+                                <div class="unit-list">
+                                    {% for u in applied_units %}
+                                        <div>{{ u.ma_don_vi }} - {{ u.ten_don_vi }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="color: #999;">Chưa gán đơn vị</span>
                             {% endif %}
                         </td>
                         <td>
@@ -179,21 +197,6 @@
                                 </label>
                             </form>
                         </td>
-                        <td>
-                            {% set applied_units = rule_unit_map.get(r.id, []) %}
-                            {% if r.apply_scope == 'ALL' %}
-                                <span style="color: #666;">Tất cả đơn vị</span>
-                            {% elif applied_units %}
-                                <div class="unit-list">
-                                    {% for u in applied_units %}
-                                        <div>{{ u.ma_don_vi }} - {{ u.ten_don_vi }}</div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <span style="color: #999;">Chưa gán đơn vị</span>
-                            {% endif %}
-                        </td>
-                        <!-- <td>{{ r.details|length }}</td> -->
                         <td>
                             <div class="actions actions-center" style="margin-top:0px">
                                 <a class="btn btn-primary" href="/rules/{{ r.id }}/details">Cấu hình</a>

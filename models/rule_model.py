@@ -25,6 +25,7 @@ class Rule(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     apply_scope = db.Column(db.String(20), nullable=False, default="ALL")
+    run_scope = db.Column(db.String(20), nullable=False, default="ONE_HOSO")
 
     bo_rule = db.relationship("BoRule", backref="rules")
 

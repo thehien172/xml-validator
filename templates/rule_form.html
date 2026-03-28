@@ -61,6 +61,21 @@
             </div>
 
             <div class="col-4">
+                <label>Phạm vi chạy rule</label>
+                {% set current_run_scope = item.run_scope if item and item.run_scope else 'ONE_HOSO' %}
+                <select name="run_scope">
+                    <option value="ONE_HOSO" {% if current_run_scope == 'ONE_HOSO' %}selected{% endif %}>Trong từng hồ sơ</option>
+                    <option value="ALL_HOSO" {% if current_run_scope == 'ALL_HOSO' %}selected{% endif %}>Toàn bộ hồ sơ trong lần chạy</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 10px; font-size: 13px; color: #6b7280;">
+            Dùng <strong>Toàn bộ hồ sơ trong lần chạy</strong> khi cần so sánh liên hồ sơ. Rule compare FIELD trên XML đa item sẽ gom toàn bộ dữ liệu rồi so một lần.
+        </div>
+
+        <div class="grid" style="margin-top: 16px;">
+            <div class="col-4">
                 <label>Phạm vi áp dụng</label>
                 <select name="apply_scope" id="apply_scope" required>
                     {% set current_scope = item.apply_scope if item and item.apply_scope else 'ALL' %}

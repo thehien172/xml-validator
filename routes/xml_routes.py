@@ -30,7 +30,8 @@ def create_xml():
         xml = DanhMucXml(
             ma_xml=request.form.get("ma_xml", "").strip().upper(),
             ten_xml=request.form.get("ten_xml", "").strip(),
-            list_path=request.form.get("list_path", "").strip()
+            list_path=request.form.get("list_path", "").strip(),
+            item_type=(request.form.get("item_type") or "MULTI").strip().upper()
         )
         db.session.add(xml)
         db.session.commit()
@@ -47,6 +48,7 @@ def edit_xml(xml_id):
         item.ma_xml = request.form.get("ma_xml", "").strip().upper()
         item.ten_xml = request.form.get("ten_xml", "").strip()
         item.list_path = request.form.get("list_path", "").strip()
+        item.item_type = (request.form.get("item_type") or "MULTI").strip().upper()
         db.session.commit()
         return redirect(url_for("xml_bp.list_xmls"))
 

@@ -81,7 +81,9 @@
                     <select class="input-xml">
                         <option value="">-- Chọn XML --</option>
                         {% for x in xmls %}
-                        <option value="{{ x.id }}">{{ x.ma_xml }} - {{ x.ten_xml }}</option>
+                        <option value="{{ x.id }}" data-item-type="{{ x.item_type if x.item_type else 'MULTI' }}">
+                            {{ x.ma_xml }} - {{ x.ten_xml }} ({{ x.item_type if x.item_type else 'MULTI' }})
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -131,7 +133,9 @@
                         <select class="input-compare-xml">
                             <option value="">-- Chọn XML so sánh --</option>
                             {% for x in xmls %}
-                            <option value="{{ x.id }}">{{ x.ma_xml }} - {{ x.ten_xml }}</option>
+                            <option value="{{ x.id }}" data-item-type="{{ x.item_type if x.item_type else 'MULTI' }}">
+                                {{ x.ma_xml }} - {{ x.ten_xml }} ({{ x.item_type if x.item_type else 'MULTI' }})
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -143,6 +147,7 @@
                         </select>
                     </div>
                 </div>
+                <div class="hint-field-compare" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
             </div>
 
             <div class="grid">
@@ -181,6 +186,11 @@
 
         function isRangeCondition(code) {
             return code === "BETWEEN" || code === "NOT_BETWEEN";
+        }
+
+        function getSelectedItemType(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            return opt ? (opt.dataset.itemType || "MULTI").trim().toUpperCase() : "MULTI";
         }
 
         async function loadFieldsByXml(xmlId, targetSelect, selectedValue) {
@@ -237,6 +247,7 @@
             const fieldModeBox = node.querySelector(".field-mode-box");
             const hintValue = node.querySelector(".hint-value");
             const hintDatePart = node.querySelector(".hint-date-part");
+            const hintFieldCompare = node.querySelector(".hint-field-compare");
             const removeBtn = node.querySelector(".btn-remove-condition");
 
             titleEl.textContent = `${role} ${conditionCounter}`;
@@ -258,9 +269,12 @@
             function updateHints() {
                 const conditionCode = getConditionCode(conditionSelect);
                 const datePart = (datePartSelect.value || "").toUpperCase();
+                const sourceItemType = getSelectedItemType(xmlSelect);
+                const compareItemType = getSelectedItemType(compareXmlSelect);
 
                 hintValue.textContent = "";
                 hintDatePart.textContent = "";
+                hintFieldCompare.textContent = "";
 
                 if (compareModeSelect.value === "VALUE") {
                     if (conditionCode === "IN_LIST") {
@@ -271,6 +285,18 @@
                         hintValue.textContent = "Điều kiện này không cần nhập giá trị.";
                     } else {
                         hintValue.textContent = "Nhập 1 giá trị so sánh.";
+                    }
+                }
+
+                if (compareModeSelect.value === "FIELD") {
+                    if (sourceItemType === "MULTI" && compareItemType === "MULTI") {
+                        hintFieldCompare.textContent = "Nếu chọn cùng field trên XML MULTI, engine sẽ so từng cặp item và loại trừ chính nó. Rule ALL_HOSO sẽ gom cả batch.";
+                    } else if (sourceItemType === "SINGLE" && compareItemType === "MULTI") {
+                        hintFieldCompare.textContent = "Field đơn sẽ được so với toàn bộ item của XML MULTI.";
+                    } else if (sourceItemType === "MULTI" && compareItemType === "SINGLE") {
+                        hintFieldCompare.textContent = "Từng item của XML MULTI sẽ được so với field đơn.";
+                    } else {
+                        hintFieldCompare.textContent = "So sánh field với field theo logic hiện tại.";
                     }
                 }
 
@@ -291,10 +317,12 @@
 
             xmlSelect.addEventListener("change", function () {
                 loadFieldsByXml(this.value, fieldSelect, "");
+                updateHints();
             });
 
             compareXmlSelect.addEventListener("change", function () {
                 loadFieldsByXml(this.value, compareFieldSelect, "");
+                updateHints();
             });
 
             compareModeSelect.addEventListener("change", updateCompareMode);

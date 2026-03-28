@@ -34,7 +34,8 @@
                 <select name="he_thong_id" id="he_thong_select" required>
                     <option value="">-- Chọn hệ thống --</option>
                     {% for s in systems %}
-                    <option value="{{ s.id }}" {% if selected_system_id %} {% if selected_system_id|string==s.id|string %}selected{% endif %} {% else %} {% if s.ten_he_thong=='L2' %}selected{% endif %} {% endif %}>
+                    <option value="{{ s.id }}" {% if selected_system_id %}{% if selected_system_id|string==s.id|string
+                        %}selected{% endif %}{% else %}{% if s.ten_he_thong=='L2' %}selected{% endif %}{% endif %}>
                         {{ s.ten_he_thong }}
                     </option>
                     {% endfor %}
@@ -46,7 +47,8 @@
                 <select name="don_vi_id" id="don_vi_select" required>
                     <option value="">-- Chọn đơn vị --</option>
                     {% for u in units %}
-                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if selected_unit_id|string==u.id|string %}selected{% endif %}>
+                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if
+                        selected_unit_id|string==u.id|string %}selected{% endif %}>
                         {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
                     </option>
                     {% endfor %}
@@ -126,58 +128,49 @@
             <tbody>
                 {% set stt = namespace(value=1) %}
                 {% for hoso in hoso_results %}
-                    {% if hoso.warnings %}
-                        {% set warning_count = hoso.warnings|length %}
-                        {% for item in hoso.warnings %}
-                        <tr>
-                            {% if loop.first %}
-                            <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
-                                {{ stt.value }}
-                            </td>
-                            <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
-                                <strong>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</strong>
-                            </td>
-                            <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
-                                {{ hoso.patient_name if hoso.patient_name else '(không có)' }}
-                            </td>
-                            <td rowspan="{{ warning_count }}" style="vertical-align:middle; white-space:nowrap;">
-                                {{ hoso.ngay_vao if hoso.ngay_vao else '(không có)' }}
-                            </td>
-                            {% endif %}
-
-                            <td>
-                                {% set severity = (item.severity or '')|upper %}
-                                {% if severity == 'ERROR' %}
-                                <span class="badge badge-error">{{ item.severity }}</span>
-                                {% elif severity == 'WARNING' %}
-                                <span class="badge badge-warning">{{ item.severity }}</span>
-                                {% else %}
-                                <span class="badge badge-info">{{ item.severity }}</span>
-                                {% endif %}
-                            </td>
-
-                            <td>{{ item.message }}</td>
-
-                            {% if loop.first %}
-                            <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
-                                <button
-                                    type="button"
-                                    class="btn btn-secondary btn-view-xml"
-                                    data-patient-code="{{ hoso.patient_code if hoso.patient_code else '' }}"
-                                    data-patient-name="{{ hoso.patient_name if hoso.patient_name else '' }}"
-                                    data-ngay-vao="{{ hoso.ngay_vao if hoso.ngay_vao else '' }}"
-                                    data-xml="{{ hoso.raw_xml|e }}"
-                                    title="Xem XML"
-                                    style="padding:6px 10px; min-width:auto;"
-                                >
-                                    👁
-                                </button>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                        {% set stt.value = stt.value + 1 %}
+                {% if hoso.warnings %}
+                {% set warning_count = hoso.warnings|length %}
+                {% for item in hoso.warnings %}
+                <tr>
+                    {% if loop.first %}
+                    <td rowspan="{{ warning_count }}" style="text-align:center; vertical-align:middle;">
+                        {{ stt.value }}
+                    </td>
+                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                        <strong>{{ hoso.patient_code if hoso.patient_code else '(không có)' }}</strong>
+                    </td>
+                    <td rowspan="{{ warning_count }}" style="vertical-align:middle;">
+                        {{ hoso.patient_name if hoso.patient_name else '(không có)' }}
+                    </td>
+                    <td rowspan="{{ warning_count }}" style="vertical-align:middle; white-space:nowrap;">
+                        {{ hoso.ngay_vao if hoso.ngay_vao else '(không có)' }}
+                    </td>
                     {% endif %}
+
+                    <td>
+                        {% set severity = (item.severity or '')|upper %}
+                        {% if severity == 'ERROR' %}
+                        <span class="badge badge-error">{{ item.severity }}</span>
+                        {% elif severity == 'WARNING' %}
+                        <span class="badge badge-warning">{{ item.severity }}</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ item.severity }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ item.message }}</td>
+
+                    <td style="text-align:center; vertical-align:middle;">
+                        <button type="button" class="btn btn-secondary btn-view-warning"
+                            data-warning='{{ item|tojson|forceescape }}' title="Xem chi tiết XML"
+                            style="padding:6px 10px; min-width:auto;">
+                            👁
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% set stt.value = stt.value + 1 %}
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
@@ -194,60 +187,221 @@
     <div class="xml-modal__dialog">
         <div class="xml-modal__header">
             <div>
-                <div style="font-weight:700; font-size:18px;">XML hồ sơ bệnh nhân</div>
+                <div id="xmlModalTitle" style="font-weight:700; font-size:18px;">Chi tiết cảnh báo</div>
                 <div id="xmlModalMeta" style="font-size:13px; color:#666; margin-top:4px;"></div>
             </div>
             <button type="button" id="xmlModalClose" class="xml-modal__close">×</button>
         </div>
+
+        <div id="xmlModalTabsWrap" class="xml-tabs-wrap" style="display:none;">
+            <div id="xmlModalTabs" class="xml-tabs"></div>
+        </div>
+
         <div class="xml-modal__body">
-            <pre id="xmlModalContent" class="xml-modal__content"></pre>
+            <div id="xmlComparePanel" class="xml-compare-panel" style="display:none;"></div>
+            <div id="xmlModalPanels"></div>
         </div>
     </div>
 </div>
 
 <style>
-.xml-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
+    .xml-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+    }
+
+    .xml-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .xml-modal__dialog {
+        position: relative;
+        width: min(1180px, 94vw);
+        max-height: 92vh;
+        margin: 4vh auto;
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .xml-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+    }
+
+    .xml-modal__close {
+        border: none;
+        background: transparent;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+    }
+
+    .xml-modal__summary {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+    }
+
+    .xml-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .xml-summary-item {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px 12px;
+    }
+
+    .xml-summary-item--full {
+        grid-column: 1 / -1;
+    }
+
+    .xml-summary-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+
+    .xml-summary-value {
+        font-size: 14px;
+        color: #111827;
+        word-break: break-word;
+    }
+
+    .xml-tabs-wrap {
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+        padding: 0 20px;
+    }
+
+    .xml-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 0;
+    }
+
+    .xml-tab {
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        color: #1f2937;
+        padding: 10px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .xml-tab.active {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: #1d4ed8;
+    }
+
+    .xml-modal__body {
+        overflow-y: scroll;
+        padding: 0;
+        /* overflow: hidden; */
+        flex: 1;
+        background: #0f172a;
+    }
+
+    .xml-panel {
+        display: none;
+        height: 100%;
+    }
+
+    .xml-panel.active {
+        display: block;
+    }
+
+    .xml-panel__meta {
+        padding: 12px 20px;
+        border-bottom: 1px solid #1e293b;
+        background: #111827;
+        color: #cbd5e1;
+        font-size: 13px;
+    }
+
+    .xml-panel__pre {
+        margin: 0;
+        padding: 16px 20px;
+        max-height: calc(92vh - 270px);
+        /* overflow: auto; */
+        background: #0f172a;
+        color: #e2e8f0;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .xml-compare-panel {
+        display: none;
+        height: 100%;
+    }
+
+    .xml-compare-panel.active {
+        display: block;
+    }
+
+    .xml-compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    height: 100%;
+    min-height: 0;
 }
-.xml-modal__backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-}
-.xml-modal__dialog {
-    position: relative;
-    width: min(1100px, 92vw);
-    max-height: 88vh;
-    margin: 4vh auto;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
-}
-.xml-modal__header {
+
+.xml-compare-col {
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid #1e293b;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e5e7eb;
+    flex-direction: column;
 }
-.xml-modal__close {
-    border: none;
-    background: transparent;
-    font-size: 28px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 4px;
-}
-.xml-modal__body {
-    padding: 0;
-}
-.xml-modal__content {
+
+    .xml-compare-col:last-child {
+        border-right: none;
+    }
+
+    .xml-compare-head {
+        padding: 12px 20px;
+        border-bottom: 1px solid #1e293b;
+        background: #111827;
+        color: #cbd5e1;
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .xml-compare-title {
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 4px;
+    }
+
+.xml-compare-pre {
     margin: 0;
     padding: 16px 20px;
-    max-height: calc(88vh - 80px);
+    flex: 1;
+    min-height: 0;
     overflow: auto;
     background: #0f172a;
     color: #e2e8f0;
@@ -256,89 +410,372 @@
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+    @media (max-width: 900px) {
+        .xml-compare-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .xml-compare-col {
+            border-right: none;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .xml-compare-col:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .xml-highlight {
+        display: block;
+        background: rgba(250, 204, 21, 0.18);
+        outline: 2px solid rgba(250, 204, 21, 0.65);
+        border-radius: 8px;
+        padding: 8px;
+        margin: 8px 0;
+    }
+
+    .xml-highlight--secondary {
+        background: rgba(96, 165, 250, 0.16);
+        outline-color: rgba(96, 165, 250, 0.7);
+    }
+
+    @media (max-width: 900px) {
+        .xml-summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .xml-summary-item--full {
+            grid-column: auto;
+        }
+
+        .xml-modal__dialog {
+            width: 96vw;
+            margin: 2vh auto;
+            max-height: 96vh;
+        }
+
+        .xml-panel__pre {
+            max-height: calc(96vh - 300px);
+        }
+    }
 </style>
 
 <script>
-(function () {
-    const systemSelect = document.getElementById("he_thong_select");
-    const unitSelect = document.getElementById("don_vi_select");
+    (function () {
+        const systemSelect = document.getElementById("he_thong_select");
+        const unitSelect = document.getElementById("don_vi_select");
 
-    function filterUnits() {
-        const selectedSystemId = systemSelect.value;
-        const options = unitSelect.querySelectorAll("option");
-        const currentUnitValue = unitSelect.value;
-        let hasVisibleSelected = false;
+        function filterUnits() {
+            const selectedSystemId = systemSelect.value;
+            const options = unitSelect.querySelectorAll("option");
+            const currentUnitValue = unitSelect.value;
+            let hasVisibleSelected = false;
 
-        options.forEach(function (option, index) {
-            if (index === 0) {
-                option.hidden = false;
+            options.forEach(function (option, index) {
+                if (index === 0) {
+                    option.hidden = false;
+                    return;
+                }
+
+                const systemId = option.getAttribute("data-system");
+                const visible = !selectedSystemId || systemId === selectedSystemId;
+                option.hidden = !visible;
+
+                if (visible && option.value === currentUnitValue) {
+                    hasVisibleSelected = true;
+                }
+            });
+
+            if (!hasVisibleSelected) {
+                unitSelect.value = "";
+            }
+        }
+
+        systemSelect.addEventListener("change", filterUnits);
+        filterUnits();
+    })();
+
+    (function () {
+        const modal = document.getElementById("xmlModal");
+        const modalClose = document.getElementById("xmlModalClose");
+        const backdrop = modal.querySelector(".xml-modal__backdrop");
+
+        const modalTitle = document.getElementById("xmlModalTitle");
+        const modalMeta = document.getElementById("xmlModalMeta");
+
+        const tabsWrap = document.getElementById("xmlModalTabsWrap");
+        const tabsEl = document.getElementById("xmlModalTabs");
+        const panelsEl = document.getElementById("xmlModalPanels");
+        const comparePanel = document.getElementById("xmlComparePanel");
+
+        const viewButtons = document.querySelectorAll(".btn-view-warning");
+
+        function escapeHtml(text) {
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function buildPatientMeta(target) {
+            const parts = [];
+            if (target.patient_code) parts.push("Mã BN: " + target.patient_code);
+            if (target.patient_name) parts.push("Họ tên: " + target.patient_name);
+            if (target.ngay_vao) parts.push("Ngày vào: " + target.ngay_vao);
+            return parts.join(" | ");
+        }
+        function buildCompareHeader(target, highlight) {
+            const lines = [];
+            if (target.patient_code || target.patient_name) {
+                lines.push((target.patient_code || "Hồ sơ") + (target.patient_name ? (" - " + target.patient_name) : ""));
+            }
+            if (target.ngay_vao) {
+                lines.push("Ngày vào: " + target.ngay_vao);
+            }
+            if (target.xml_code) {
+                lines.push("XML: " + target.xml_code);
+            }
+            if (highlight && highlight.item_index) {
+                lines.push("STT item: " + highlight.item_index);
+            }
+            return lines;
+        }
+
+        function renderComparePanel(xmlTargets) {
+            comparePanel.innerHTML = "";
+
+            const compareItems = [];
+
+            xmlTargets.forEach(function (target) {
+                const highlights = Array.isArray(target.highlights) ? target.highlights : [];
+                highlights.forEach(function (highlight) {
+                    compareItems.push({
+                        target: target,
+                        highlight: highlight
+                    });
+                });
+            });
+
+            if (!compareItems.length) {
+                comparePanel.style.display = "none";
                 return;
             }
 
-            const systemId = option.getAttribute("data-system");
-            const visible = !selectedSystemId || systemId === selectedSystemId;
-            option.hidden = !visible;
+            const grid = document.createElement("div");
+            grid.className = "xml-compare-grid";
 
-            if (visible && option.value === currentUnitValue) {
-                hasVisibleSelected = true;
+            compareItems.slice(0, 2).forEach(function (entry, index) {
+                const col = document.createElement("div");
+                col.className = "xml-compare-col";
+
+                const head = document.createElement("div");
+                head.className = "xml-compare-head";
+
+                const title = document.createElement("div");
+                title.className = "xml-compare-title";
+                title.textContent = entry.highlight.title || ("Đối tượng " + (index + 1));
+
+                const meta = document.createElement("div");
+                meta.innerHTML = buildCompareHeader(entry.target, entry.highlight)
+                    .map(function (x) { return escapeHtml(x); })
+                    .join("<br>");
+
+                const pre = document.createElement("pre");
+                pre.className = "xml-compare-pre";
+                pre.innerHTML = highlightXml(entry.highlight.item_xml || "", [entry.highlight]);
+
+                head.appendChild(title);
+                head.appendChild(meta);
+                col.appendChild(head);
+                col.appendChild(pre);
+                grid.appendChild(col);
+            });
+
+            comparePanel.appendChild(grid);
+            comparePanel.style.display = "block";
+        }
+
+        function highlightXml(rawXml, highlights) {
+            let html = escapeHtml(rawXml || "");
+            const items = Array.isArray(highlights) ? highlights.slice() : [];
+
+            items.sort(function (a, b) {
+                return (b.item_xml || "").length - (a.item_xml || "").length;
+            });
+
+            items.forEach(function (highlight, index) {
+                const rawSnippet = highlight && highlight.item_xml ? String(highlight.item_xml) : "";
+                if (!rawSnippet) return;
+
+                const escapedSnippet = escapeHtml(rawSnippet);
+                const pos = html.indexOf(escapedSnippet);
+                if (pos === -1) return;
+
+                const cssClass = index === 0 ? "xml-highlight" : "xml-highlight xml-highlight--secondary";
+                const wrapped = '<span class="' + cssClass + '" title="' + escapeHtml(highlight.title || "") + '">' + escapedSnippet + '</span>';
+
+                html = html.slice(0, pos) + wrapped + html.slice(pos + escapedSnippet.length);
+            });
+
+            return html;
+        }
+
+        function setActiveTab(tabIndex) {
+            const tabs = tabsEl.querySelectorAll(".xml-tab");
+            const panels = panelsEl.querySelectorAll(".xml-panel");
+
+            tabs.forEach(function (tab, idx) {
+                tab.classList.toggle("active", idx === tabIndex);
+            });
+
+            if (tabIndex === 0) {
+                comparePanel.classList.add("active");
+                comparePanel.style.display = "block";
+                panels.forEach(function (panel) {
+                    panel.classList.remove("active");
+                });
+                return;
+            }
+
+            comparePanel.classList.remove("active");
+            comparePanel.style.display = "none";
+
+            panels.forEach(function (panel, idx) {
+                panel.classList.toggle("active", idx === (tabIndex - 1));
+            });
+        }
+
+        function closeModal() {
+            modal.style.display = "none";
+            modalTitle.textContent = "Chi tiết cảnh báo";
+            modalMeta.textContent = "";
+            tabsEl.innerHTML = "";
+            panelsEl.innerHTML = "";
+            comparePanel.innerHTML = "";
+            comparePanel.classList.remove("active");
+            comparePanel.style.display = "none";
+            tabsWrap.style.display = "none";
+            document.body.style.overflow = "";
+        }
+
+        function openWarningModal(warning) {
+            const xmlTargets = Array.isArray(warning.xml_targets) ? warning.xml_targets : [];
+            const fields = [];
+            // const failedFields = Array.isArray(warning.failed_fields) ? warning.failed_fields : [];
+
+            // failedFields.forEach(function (item) {
+            //     if (item && item.field_name && fields.indexOf(item.field_name) === -1) {
+            //         fields.push(item.field_name);
+            //     }
+            // });
+
+            modalTitle.textContent = "Chi tiết cảnh báo";
+            modalMeta.textContent = warning.rule_name ? ("Rule: " + warning.rule_name) : "";
+
+            tabsEl.innerHTML = "";
+            panelsEl.innerHTML = "";
+            comparePanel.innerHTML = "";
+            comparePanel.classList.remove("active");
+            comparePanel.style.display = "none";
+
+            if (!xmlTargets.length) {
+                tabsWrap.style.display = "none";
+
+                const panel = document.createElement("div");
+                panel.className = "xml-panel active";
+
+                const pre = document.createElement("pre");
+                pre.className = "xml-panel__pre";
+                pre.textContent = "Không có dữ liệu XML để hiển thị.";
+
+                panel.appendChild(pre);
+                panelsEl.appendChild(panel);
+
+                modal.style.display = "block";
+                document.body.style.overflow = "hidden";
+                return;
+            }
+
+            const hasCompareMode = xmlTargets.some(function (target) {
+                return Array.isArray(target.highlights) && target.highlights.length > 0;
+            });
+
+            if (hasCompareMode) {
+                const mainTab = document.createElement("button");
+                mainTab.type = "button";
+                mainTab.className = "xml-tab";
+                mainTab.textContent = "Item lỗi";
+                mainTab.addEventListener("click", function () {
+                    setActiveTab(0);
+                });
+                tabsEl.appendChild(mainTab);
+
+                renderComparePanel(xmlTargets);
+            }
+
+            xmlTargets.forEach(function (target, index) {
+                const tabBtn = document.createElement("button");
+                tabBtn.type = "button";
+                tabBtn.className = "xml-tab";
+                tabBtn.textContent = (target.patient_code || "Hồ sơ") + (target.patient_name ? (" - " + target.patient_name) : "");
+                tabBtn.addEventListener("click", function () {
+                    setActiveTab(hasCompareMode ? (index + 1) : index);
+                });
+                tabsEl.appendChild(tabBtn);
+
+                const panel = document.createElement("div");
+                panel.className = "xml-panel";
+
+                const panelMeta = document.createElement("div");
+                panelMeta.className = "xml-panel__meta";
+                panelMeta.textContent = buildPatientMeta(target);
+
+                const pre = document.createElement("pre");
+                pre.className = "xml-panel__pre";
+                pre.innerHTML = highlightXml(target.raw_xml || "", target.highlights || []);
+
+                panel.appendChild(panelMeta);
+                panel.appendChild(pre);
+                panelsEl.appendChild(panel);
+            });
+
+            tabsWrap.style.display = "block";
+
+            if (hasCompareMode) {
+                setActiveTab(0);
+            } else {
+                setActiveTab(0);
+            }
+
+            modal.style.display = "block";
+            document.body.style.overflow = "hidden";
+        }
+        viewButtons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const raw = btn.getAttribute("data-warning") || "{}";
+                let warning = {};
+
+                try {
+                    warning = JSON.parse(raw);
+                } catch (e) {
+                    warning = {};
+                }
+
+                openWarningModal(warning);
+            });
+        });
+
+        modalClose.addEventListener("click", closeModal);
+        backdrop.addEventListener("click", closeModal);
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && modal.style.display === "block") {
+                closeModal();
             }
         });
-
-        if (!hasVisibleSelected) {
-            unitSelect.value = "";
-        }
-    }
-
-    systemSelect.addEventListener("change", filterUnits);
-    filterUnits();
-})();
-
-(function () {
-    const modal = document.getElementById("xmlModal");
-    const modalClose = document.getElementById("xmlModalClose");
-    const modalContent = document.getElementById("xmlModalContent");
-    const modalMeta = document.getElementById("xmlModalMeta");
-    const backdrop = modal.querySelector(".xml-modal__backdrop");
-    const viewButtons = document.querySelectorAll(".btn-view-xml");
-
-    function closeModal() {
-        modal.style.display = "none";
-        modalContent.textContent = "";
-        modalMeta.textContent = "";
-        document.body.style.overflow = "";
-    }
-
-    function openModal(metaText, xmlText) {
-        modalMeta.textContent = metaText || "";
-        modalContent.textContent = xmlText || "";
-        modal.style.display = "block";
-        document.body.style.overflow = "hidden";
-    }
-
-    viewButtons.forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            const patientCode = btn.getAttribute("data-patient-code") || "";
-            const patientName = btn.getAttribute("data-patient-name") || "";
-            const ngayVao = btn.getAttribute("data-ngay-vao") || "";
-            const xml = btn.getAttribute("data-xml") || "";
-
-            const metaParts = [];
-            if (patientCode) metaParts.push("Mã BN: " + patientCode);
-            if (patientName) metaParts.push("Họ tên: " + patientName);
-            if (ngayVao) metaParts.push("Ngày vào: " + ngayVao);
-
-            openModal(metaParts.join(" | "), xml);
-        });
-    });
-
-    modalClose.addEventListener("click", closeModal);
-    backdrop.addEventListener("click", closeModal);
-
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && modal.style.display === "block") {
-            closeModal();
-        }
-    });
-})();
+    })();
 </script>
 {% endblock %}

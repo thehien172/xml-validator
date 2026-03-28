@@ -21,6 +21,11 @@ def get_hoso_nodes(tree):
     return tree.xpath(".//HOSO")
 
 
+def get_xml_item_type(xml_config):
+    value = getattr(xml_config, "item_type", "MULTI") or "MULTI"
+    return str(value).strip().upper()
+
+
 def build_xml_data_map_for_hoso(hoso_node, xml_configs):
     """
     Trong 1 HOSO, map các FILEHOSO theo LOAIHOSO.
@@ -30,6 +35,7 @@ def build_xml_data_map_for_hoso(hoso_node, xml_configs):
             "xml_id": ...,
             "xml_code": "XML1",
             "xml_name": "...",
+            "item_type": "SINGLE" | "MULTI",
             "items": [...]
         },
         ...
@@ -42,6 +48,7 @@ def build_xml_data_map_for_hoso(hoso_node, xml_configs):
             "xml_id": xml_config.id,
             "xml_code": xml_config.ma_xml,
             "xml_name": xml_config.ten_xml,
+            "item_type": get_xml_item_type(xml_config),
             "items": []
         }
 
@@ -59,13 +66,18 @@ def build_xml_data_map_for_hoso(hoso_node, xml_configs):
             continue
 
         items = noidungfile.xpath(xml_config.list_path)
-        if not items:
-            list_path = (xml_config.list_path or "").strip()
-            normalized_path = list_path[2:] if list_path.startswith("./") else list_path
-            fallback_tag = normalized_path.split("/")[-1] if normalized_path else "EMPTY_ITEM"
+        item_type = get_xml_item_type(xml_config)
 
-            empty_item = etree.Element(fallback_tag)
-            items = [empty_item]
+        if not items:
+            if item_type == "SINGLE":
+                list_path = (xml_config.list_path or "").strip()
+                normalized_path = list_path[2:] if list_path.startswith("./") else list_path
+                fallback_tag = normalized_path.split("/")[-1] if normalized_path else "EMPTY_ITEM"
+
+                empty_item = etree.Element(fallback_tag)
+                items = [empty_item]
+            else:
+                items = []
 
         result[loaihoso]["items"] = items
 
@@ -96,15 +108,13 @@ def format_yyyymmddhhmm(value):
 
     raw = str(value).strip()
 
-    # FIX CỨNG cho format 12 ký tự (YYYYMMDDHHMM)
     if raw.isdigit() and len(raw) == 12:
         try:
             dt = datetime.strptime(raw, "%Y%m%d%H%M")
             return dt.strftime("%d/%m/%Y %H:%M")
-        except:
+        except Exception:
             pass
 
-    # fallback các format khác
     formats = [
         ("%Y%m%d%H%M%S", "%d/%m/%Y %H:%M:%S"),
         ("%Y%m%d", "%d/%m/%Y"),
@@ -118,7 +128,7 @@ def format_yyyymmddhhmm(value):
         try:
             dt = datetime.strptime(raw, input_fmt)
             return dt.strftime(output_fmt)
-        except:
+        except Exception:
             continue
 
     return raw
