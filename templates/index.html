@@ -318,7 +318,6 @@
     .xml-modal__body {
         overflow-y: scroll;
         padding: 0;
-        /* overflow: hidden; */
         flex: 1;
         background: #0f172a;
     }
@@ -535,12 +534,6 @@
             if (target.ngay_vao) {
                 lines.push("Ngày vào: " + target.ngay_vao);
             }
-            if (target.xml_code) {
-                lines.push("XML: " + target.xml_code);
-            }
-            if (highlight && highlight.item_index) {
-                lines.push("STT item: " + highlight.item_index);
-            }
             return lines;
         }
 
@@ -664,13 +657,6 @@
         function openWarningModal(warning) {
             const xmlTargets = Array.isArray(warning.xml_targets) ? warning.xml_targets : [];
             const fields = [];
-            // const failedFields = Array.isArray(warning.failed_fields) ? warning.failed_fields : [];
-
-            // failedFields.forEach(function (item) {
-            //     if (item && item.field_name && fields.indexOf(item.field_name) === -1) {
-            //         fields.push(item.field_name);
-            //     }
-            // });
 
             modalTitle.textContent = "Chi tiết cảnh báo";
             modalMeta.textContent = warning.rule_name ? ("Rule: " + warning.rule_name) : "";

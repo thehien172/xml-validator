@@ -59,48 +59,6 @@
     </form>
 </div>
 
-<div class="card">
-    <h2 class="card-title">Công thức logic</h2>
-
-    <div style="margin-bottom: 14px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
-        <div style="font-weight: 700; margin-bottom: 6px;">TRIGGER</div>
-        {% if grouped_details['TRIGGER'] %}
-            <div style="font-size: 14px; color: #374151;">
-                {% for group in grouped_details['TRIGGER'] %}
-                    {% if not loop.first %} OR {% endif %}
-                    (
-                    {% for d in group.details %}
-                        {% if not loop.first %} AND {% endif %}
-                        T{{ group.group_no }}.{{ loop.index }}
-                    {% endfor %}
-                    )
-                {% endfor %}
-            </div>
-        {% else %}
-            <div style="font-size: 14px; color: #6b7280;">Chưa có trigger.</div>
-        {% endif %}
-    </div>
-
-    <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
-        <div style="font-weight: 700; margin-bottom: 6px;">VALIDATE</div>
-        {% if grouped_details['VALIDATE'] %}
-            <div style="font-size: 14px; color: #374151;">
-                {% for group in grouped_details['VALIDATE'] %}
-                    {% if not loop.first %} OR {% endif %}
-                    (
-                    {% for d in group.details %}
-                        {% if not loop.first %} AND {% endif %}
-                        V{{ group.group_no }}.{{ loop.index }}
-                    {% endfor %}
-                    )
-                {% endfor %}
-            </div>
-        {% else %}
-            <div style="font-size: 14px; color: #6b7280;">Chưa có validate.</div>
-        {% endif %}
-    </div>
-</div>
-
 {% if grouped_details['TRIGGER'] %}
 <div class="card">
     <h2 class="card-title">Danh sách nhóm TRIGGER</h2>
@@ -110,7 +68,6 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;">
             <div>
                 <div style="font-weight:700;">Nhóm Trigger {{ group.group_no }}</div>
-                <div style="font-size:12px; color:#6b7280;">Các điều kiện trong nhóm này nối bằng AND.</div>
             </div>
             <div class="actions">
                 <a class="btn btn-secondary" href="/rules/{{ rule.id }}/details/TRIGGER/{{ group.group_no }}/edit">Sửa nhóm</a>
@@ -153,7 +110,6 @@
                             {% if d.compare_mode == 'FIELD' and d.compare_field %}
                                 {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
                                 {% if d.field_id == d.compare_field_id and d.field.xml.item_type == 'MULTI' %}
-                                    <br><small style="color:#6b7280;">So cặp từng item, loại trừ chính nó</small>
                                 {% endif %}
                             {% else %}
                                 {{ d.gia_tri or '' }}
@@ -178,7 +134,6 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;">
             <div>
                 <div style="font-weight:700;">Nhóm Validate {{ group.group_no }}</div>
-                <div style="font-size:12px; color:#6b7280;">Các điều kiện trong nhóm này nối bằng AND.</div>
             </div>
             <div class="actions">
                 <a class="btn btn-secondary" href="/rules/{{ rule.id }}/details/VALIDATE/{{ group.group_no }}/edit">Sửa nhóm</a>
@@ -221,7 +176,6 @@
                             {% if d.compare_mode == 'FIELD' and d.compare_field %}
                                 {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
                                 {% if d.field_id == d.compare_field_id and d.field.xml.item_type == 'MULTI' %}
-                                    <br><small style="color:#6b7280;">So cặp từng item, loại trừ chính nó</small>
                                 {% endif %}
                             {% else %}
                                 {{ d.gia_tri or '' }}
@@ -236,6 +190,48 @@
     {% endfor %}
 </div>
 {% endif %}
+
+<div class="card">
+    <h2 class="card-title">Công thức logic</h2>
+
+    <div style="margin-bottom: 14px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+        <div style="font-weight: 700; margin-bottom: 6px;">TRIGGER</div>
+        {% if grouped_details['TRIGGER'] %}
+            <div style="font-size: 14px; color: #374151;">
+                {% for group in grouped_details['TRIGGER'] %}
+                    {% if not loop.first %} OR {% endif %}
+                    (
+                    {% for d in group.details %}
+                        {% if not loop.first %} AND {% endif %}
+                        T{{ group.group_no }}.{{ loop.index }}
+                    {% endfor %}
+                    )
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="font-size: 14px; color: #6b7280;">Chưa có trigger.</div>
+        {% endif %}
+    </div>
+
+    <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+        <div style="font-weight: 700; margin-bottom: 6px;">VALIDATE</div>
+        {% if grouped_details['VALIDATE'] %}
+            <div style="font-size: 14px; color: #374151;">
+                {% for group in grouped_details['VALIDATE'] %}
+                    {% if not loop.first %} OR {% endif %}
+                    (
+                    {% for d in group.details %}
+                        {% if not loop.first %} AND {% endif %}
+                        V{{ group.group_no }}.{{ loop.index }}
+                    {% endfor %}
+                    )
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="font-size: 14px; color: #6b7280;">Chưa có validate.</div>
+        {% endif %}
+    </div>
+</div>
 
 {% if not grouped_details['TRIGGER'] and not grouped_details['VALIDATE'] %}
 <div class="card">

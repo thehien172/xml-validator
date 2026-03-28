@@ -127,6 +127,7 @@ def is_between_value(actual_value, expected_value):
 def check_condition(actual_value, condition_code, expected_value=None):
     actual_value = normalize_value(actual_value)
 
+    # ===== CASE expected là LIST (so với nhiều giá trị) =====
     if isinstance(expected_value, list):
         expected_list = normalize_list(expected_value)
 
@@ -139,6 +140,9 @@ def check_condition(actual_value, condition_code, expected_value=None):
         if condition_code == "IN_LIST":
             return actual_value in expected_list
 
+        if condition_code == "NOT_IN_LIST":
+            return actual_value not in expected_list
+
         if condition_code == "NOT_NULL":
             return actual_value is not None and actual_value != ""
 
@@ -147,6 +151,7 @@ def check_condition(actual_value, condition_code, expected_value=None):
 
         return False
 
+    # ===== CASE expected là VALUE =====
     expected_value = normalize_value(expected_value)
 
     if condition_code == "IS_NULL":
@@ -166,11 +171,22 @@ def check_condition(actual_value, condition_code, expected_value=None):
             return False
         return expected_value in actual_value
 
+    if condition_code == "NOT_CONTAINS":
+        if actual_value is None or expected_value is None:
+            return True
+        return expected_value not in actual_value
+
     if condition_code == "IN_LIST":
         if actual_value is None or expected_value is None:
             return False
         values = [v.strip() for v in expected_value.split(",") if v.strip()]
         return actual_value in values
+
+    if condition_code == "NOT_IN_LIST":
+        if actual_value is None or expected_value is None:
+            return True
+        values = [v.strip() for v in expected_value.split(",") if v.strip()]
+        return actual_value not in values
 
     if condition_code == "BETWEEN":
         return is_between_value(actual_value, expected_value)
