@@ -30,7 +30,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 90px;">ID</th>
+                        <th style="width: 90px;">STT</th>
                         <th style="width: 140px;">Mã XML</th>
                         <th>Tên XML</th>
                         <!-- <th>List path</th> -->
@@ -40,12 +40,12 @@
                 <tbody>
                     {% for x in xmls %}
                     <tr>
-                        <td><strong>{{ x.id }}</strong></td>
+                        <td><strong>{{ loop.index }}</strong></td>
                         <td>{{ x.ma_xml }}</td>
                         <td>{{ x.ten_xml }}</td>
                         <!-- <td><code>{{ x.list_path }}</code></td> -->
                         <td>
-                            <div class="actions">
+                            <div class="actions actions-center">
                                 <a class="btn btn-secondary" href="/xmls/{{ x.id }}/edit">Sửa</a>
                                 <form class="inline" method="POST" action="/xmls/{{ x.id }}/delete" onsubmit="return confirm('Xóa XML này?');">
                                     <button class="btn btn-danger" type="submit">Xóa</button>

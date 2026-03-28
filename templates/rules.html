@@ -140,7 +140,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 70px;">ID</th>
+                        <th style="width: 70px;">STT</th>
                         <th style="width: 120px;">Bộ rule</th>
                         <th style="min-width: 220px;">Tên rule</th>
                         <!-- <th style="min-width: 260px;">Thông báo</th> -->
@@ -154,7 +154,7 @@
                 <tbody>
                     {% for r in rules %}
                     <tr>
-                        <td><strong>{{ r.id }}</strong></td>
+                        <td><strong>{{ loop.index }}</strong></td>
                         <td>{{ r.bo_rule.ma_bo_rule }}</td>
                         <td style="text-align:left">{{ r.ten_rule }}</td>
                         <!-- <td>{{ r.thong_bao }}</td> -->
@@ -195,7 +195,7 @@
                         </td>
                         <!-- <td>{{ r.details|length }}</td> -->
                         <td>
-                            <div class="actions" style="margin-top:0px">
+                            <div class="actions actions-center" style="margin-top:0px">
                                 <a class="btn btn-primary" href="/rules/{{ r.id }}/details">Cấu hình</a>
                                 <a class="btn btn-secondary" href="/rules/{{ r.id }}/edit">Sửa</a>
                                 <form class="inline" method="POST" action="/rules/{{ r.id }}/delete" onsubmit="return confirm('Xóa rule này?');">

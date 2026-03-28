@@ -43,7 +43,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 90px;">ID</th>
+                        <th style="width: 90px;">STT</th>
                         <th style="width: 140px;">Mã bộ rule</th>
                         <th>Tên bộ rule</th>
                         <th>Mô tả</th>
@@ -55,7 +55,7 @@
                 <tbody>
                     {% for x in items %}
                     <tr>
-                        <td><strong>{{ x.id }}</strong></td>
+                        <td><strong>{{ loop.index }}</strong></td>
                         <td>{{ x.ma_bo_rule }}</td>
                         <td>{{ x.ten_bo_rule }}</td>
                         <td>{{ x.mo_ta or '' }}</td>
@@ -68,7 +68,7 @@
                         </td>
                         <td>{{ x.rules|length }}</td>
                         <td>
-                            <div class="actions">
+                            <div class="actions actions-center">
                                 <a class="btn btn-secondary" href="/rule-sets/{{ x.id }}/edit">Sửa</a>
                                 <form class="inline" method="POST" action="/rule-sets/{{ x.id }}/delete" onsubmit="return confirm('Xóa bộ rule này?');">
                                     <button class="btn btn-danger" type="submit">Xóa</button>

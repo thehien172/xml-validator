@@ -32,8 +32,8 @@
                     <tr>
                         <th style="width: 100px;">ID</th>
                         <th>Tên hệ thống</th>
-                        <th style="width: 160px;">Số đơn vị</th>
-                        <th style="width: 180px;">Thao tác</th>
+                        <th style="width: 240px;">Số đơn vị</th>
+                        <th style="width: 280px;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43,7 +43,7 @@
                         <td>{{ x.ten_he_thong }}</td>
                         <td>{{ x.don_vis|length }}</td>
                         <td>
-                            <div class="actions">
+                            <div class="actions actions-center">
                                 <a class="btn btn-secondary" href="/systems/{{ x.id }}/edit">Sửa</a>
                                 <form class="inline" method="POST" action="/systems/{{ x.id }}/delete" onsubmit="return confirm('Xóa hệ thống này?');">
                                     <button class="btn btn-danger" type="submit">Xóa</button>
