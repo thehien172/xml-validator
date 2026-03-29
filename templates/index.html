@@ -16,13 +16,14 @@
 {% set selected_mode = request.form.get('mode', 'l2') %}
 {% set selected_system_id = request.form.get('he_thong_id', '') %}
 {% set selected_unit_id = request.form.get('don_vi_id', '') %}
+{% set selected_file_unit_id = request.form.get('file_don_vi_id', '') %}
 {% set selected_tu_ngay = request.form.get('tu_ngay', '') %}
 {% set selected_den_ngay = request.form.get('den_ngay', '') %}
 
 <div class="card">
     <h2 class="card-title">Kiểm tra từ hệ thống</h2>
     <div class="card-subtitle">
-        Trước mắt dùng cho luồng L2. Chọn hệ thống, đơn vị và khoảng thời gian để lấy XML về kiểm tra.
+        <!-- Trước mắt dùng cho luồng L2. Chọn hệ thống, đơn vị và khoảng thời gian để lấy XML về kiểm tra. -->
     </div>
 
     <form method="POST">
@@ -77,7 +78,8 @@
 <div class="card">
     <h2 class="card-title">Kiểm tra từ file XML</h2>
     <div class="card-subtitle">
-        Dùng để test nhanh hoặc kiểm tra thủ công khi chưa lấy dữ liệu trực tiếp từ hệ thống.
+        <!-- Dùng để test nhanh hoặc kiểm tra thủ công khi chưa lấy dữ liệu trực tiếp từ hệ thống.
+        Có thể chọn đơn vị để áp dụng rule theo đơn vị; nếu bỏ trống thì giữ như cũ. -->
     </div>
 
     <form method="POST" enctype="multipart/form-data">
@@ -89,7 +91,20 @@
                 <input type="file" id="xml_file" name="xml_file" accept=".xml" required>
             </div>
 
-            <div class="col-4" style="display:flex; align-items:end;">
+            <div class="col-4">
+                <label for="file_don_vi_select">Đơn vị</label>
+                <select name="file_don_vi_id" id="file_don_vi_select">
+                    <option value="">-- Chọn đơn vị --</option>
+                    {% for u in units %}
+                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}"
+                        {% if selected_file_unit_id|string==u.id|string %}selected{% endif %}>
+                        {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12" style="display:flex; align-items:end;">
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Kiểm tra từ file</button>
                 </div>
@@ -362,20 +377,20 @@
     }
 
     .xml-compare-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    height: 100%;
-    min-height: 0;
-}
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        height: 100%;
+        min-height: 0;
+    }
 
-.xml-compare-col {
-    min-width: 0;
-    min-height: 0;
-    border-right: 1px solid #1e293b;
-    display: flex;
-    flex-direction: column;
-}
+    .xml-compare-col {
+        min-width: 0;
+        min-height: 0;
+        border-right: 1px solid #1e293b;
+        display: flex;
+        flex-direction: column;
+    }
 
     .xml-compare-col:last-child {
         border-right: none;
@@ -396,19 +411,19 @@
         margin-bottom: 4px;
     }
 
-.xml-compare-pre {
-    margin: 0;
-    padding: 16px 20px;
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: #0f172a;
-    color: #e2e8f0;
-    font-size: 13px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
+    .xml-compare-pre {
+        margin: 0;
+        padding: 16px 20px;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
 
     @media (max-width: 900px) {
         .xml-compare-grid {
@@ -464,11 +479,13 @@
     (function () {
         const systemSelect = document.getElementById("he_thong_select");
         const unitSelect = document.getElementById("don_vi_select");
+        const fileUnitSelect = document.getElementById("file_don_vi_select");
 
-        function filterUnits() {
-            const selectedSystemId = systemSelect.value;
-            const options = unitSelect.querySelectorAll("option");
-            const currentUnitValue = unitSelect.value;
+        function filterSelectOptions(selectEl, selectedSystemId) {
+            if (!selectEl) return;
+
+            const options = selectEl.querySelectorAll("option");
+            const currentValue = selectEl.value;
             let hasVisibleSelected = false;
 
             options.forEach(function (option, index) {
@@ -481,14 +498,20 @@
                 const visible = !selectedSystemId || systemId === selectedSystemId;
                 option.hidden = !visible;
 
-                if (visible && option.value === currentUnitValue) {
+                if (visible && option.value === currentValue) {
                     hasVisibleSelected = true;
                 }
             });
 
             if (!hasVisibleSelected) {
-                unitSelect.value = "";
+                selectEl.value = "";
             }
+        }
+
+        function filterUnits() {
+            const selectedSystemId = systemSelect.value;
+            filterSelectOptions(unitSelect, selectedSystemId);
+            filterSelectOptions(fileUnitSelect, selectedSystemId);
         }
 
         systemSelect.addEventListener("change", filterUnits);
@@ -526,6 +549,7 @@
             if (target.ngay_vao) parts.push("Ngày vào: " + target.ngay_vao);
             return parts.join(" | ");
         }
+
         function buildCompareHeader(target, highlight) {
             const lines = [];
             if (target.patient_code || target.patient_name) {
@@ -656,7 +680,6 @@
 
         function openWarningModal(warning) {
             const xmlTargets = Array.isArray(warning.xml_targets) ? warning.xml_targets : [];
-            const fields = [];
 
             modalTitle.textContent = "Chi tiết cảnh báo";
             modalMeta.textContent = warning.rule_name ? ("Rule: " + warning.rule_name) : "";
@@ -739,6 +762,7 @@
             modal.style.display = "block";
             document.body.style.overflow = "hidden";
         }
+
         viewButtons.forEach(function (btn) {
             btn.addEventListener("click", function () {
                 const raw = btn.getAttribute("data-warning") || "{}";

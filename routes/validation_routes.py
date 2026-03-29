@@ -43,9 +43,16 @@ def index():
 
                     tree = parse_xml_file(file_path)
 
-                    # Upload file thủ công thì không gắn đơn vị cụ thể
-                    # => chỉ áp dụng các rule scope ALL
-                    hoso_results, stats = run_validation(tree, don_vi_id=None)
+                    file_don_vi_id = (request.form.get("file_don_vi_id") or "").strip()
+                    run_don_vi_id = None
+
+                    if file_don_vi_id:
+                        don_vi = DonVi.query.get(file_don_vi_id)
+                        if not don_vi:
+                            raise Exception("Không tìm thấy đơn vị áp dụng cho file XML.")
+                        run_don_vi_id = don_vi.id
+
+                    hoso_results, stats = run_validation(tree, don_vi_id=run_don_vi_id)
 
             elif mode == "l2":
                 don_vi_id = request.form.get("don_vi_id")
