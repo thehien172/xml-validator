@@ -20,7 +20,7 @@
 
 <div class="card">
     {% if error %}
-    <div class="alert alert-danger" style="margin-bottom: 15px;">
+    <div class="alert alert-error" style="margin-bottom: 15px;">
         {{ error }}
     </div>
     {% endif %}
@@ -111,6 +111,7 @@
                     <select class="input-compare-mode">
                         <option value="VALUE">So sánh với giá trị cố định</option>
                         <option value="FIELD">So sánh với field khác</option>
+                        <option value="CATEGORY">So sánh với danh mục</option>
                     </select>
                 </div>
             </div>
@@ -149,6 +150,27 @@
                 <div class="hint-field-compare" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
             </div>
 
+            <div class="category-mode-box" style="display:none;">
+                <div class="grid">
+                    <div class="col-6">
+                        <label>Danh mục</label>
+                        <select class="input-compare-category">
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6">
+                        <label>Field danh mục</label>
+                        <select class="input-compare-category-field">
+                            <option value="">-- Chọn field danh mục --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="hint-category-compare" style="margin-top:6px; font-size:12px; color:#6b7280;">
+                    Chỉ chọn danh mục cha. Nếu là danh mục riêng, engine sẽ tự map đơn vị đang chạy validate để lấy đúng bộ dữ liệu đơn vị.
+                </div>
+            </div>
+
             <div class="grid">
                 <div class="col-12">
                     <label>Date part (nếu field là DATE)</label>
@@ -165,7 +187,7 @@
             </div>
         </div>
     </template>
-    
+
     <script>
     (function () {
         const role = {{ role|tojson }};
@@ -177,6 +199,7 @@
         const btnAddCondition = document.getElementById("btn_add_condition");
 
         let conditionCounter = 0;
+        let cachedCategories = null;
 
         function getConditionCode(selectEl) {
             const opt = selectEl.options[selectEl.selectedIndex];
@@ -201,14 +224,14 @@
             }
 
             try {
-                const response = await fetch(`/rules/api/fields-by-xml?xml_id=${encodeURIComponent(xmlId)}`);
+                const response = await fetch('/rules/api/fields-by-xml?xml_id=' + encodeURIComponent(xmlId));
                 const data = await response.json();
 
                 targetSelect.innerHTML = '<option value="">-- Chọn field --</option>';
                 data.forEach(function (f) {
                     const opt = document.createElement("option");
                     opt.value = f.id;
-                    opt.textContent = `${f.ten_truong} | ${f.xml_path} (${f.data_type || 'STRING'})`;
+                    opt.textContent = f.ten_truong + ' | ' + f.xml_path + ' (' + (f.data_type || 'STRING') + ')';
                     opt.dataset.type = f.data_type || "STRING";
                     if (String(selectedValue || "") === String(f.id)) {
                         opt.selected = true;
@@ -220,11 +243,69 @@
             }
         }
 
+        async function ensureCategoriesLoaded() {
+            if (cachedCategories) {
+                return cachedCategories;
+            }
+
+            const response = await fetch('/rules/api/categories');
+            cachedCategories = await response.json();
+            return cachedCategories;
+        }
+
+        async function loadCategories(targetSelect, selectedValue) {
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            try {
+                const items = await ensureCategoriesLoaded();
+                targetSelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+
+                items.forEach(function (item) {
+                    const opt = document.createElement("option");
+                    opt.value = item.id;
+                    opt.textContent = item.label || item.ten_danh_muc;
+                    if (String(selectedValue || "") === String(item.id)) {
+                        opt.selected = true;
+                    }
+                    targetSelect.appendChild(opt);
+                });
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải danh mục --</option>';
+            }
+        }
+
+        async function loadCategoryFields(categoryId, targetSelect, selectedValue) {
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            if (!categoryId) {
+                targetSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/rules/api/category-fields?category_id=' + encodeURIComponent(categoryId));
+                const data = await response.json();
+
+                targetSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                data.forEach(function (f) {
+                    const opt = document.createElement("option");
+                    opt.value = f.id;
+                    opt.textContent = f.ma_truong + ' | ' + f.ten_truong;
+                    if (String(selectedValue || "") === String(f.id)) {
+                        opt.selected = true;
+                    }
+                    targetSelect.appendChild(opt);
+                });
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải field danh mục --</option>';
+            }
+        }
+
         function updateTitles() {
             const cards = conditionsContainer.querySelectorAll(".condition-card");
             cards.forEach(function (cardEl, idx) {
                 const titleEl = cardEl.querySelector(".condition-title");
-                titleEl.textContent = `${role} ${idx + 1}`;
+                titleEl.textContent = role + ' ' + (idx + 1);
             });
         }
 
@@ -241,28 +322,45 @@
             const giaTriInput = node.querySelector(".input-gia-tri");
             const compareXmlSelect = node.querySelector(".input-compare-xml");
             const compareFieldSelect = node.querySelector(".input-compare-field");
+            const compareCategorySelect = node.querySelector(".input-compare-category");
+            const compareCategoryFieldSelect = node.querySelector(".input-compare-category-field");
             const datePartSelect = node.querySelector(".input-date-part");
             const valueModeBox = node.querySelector(".value-mode-box");
             const fieldModeBox = node.querySelector(".field-mode-box");
+            const categoryModeBox = node.querySelector(".category-mode-box");
             const hintValue = node.querySelector(".hint-value");
             const hintDatePart = node.querySelector(".hint-date-part");
             const hintFieldCompare = node.querySelector(".hint-field-compare");
             const removeBtn = node.querySelector(".btn-remove-condition");
 
-            titleEl.textContent = `${role} ${conditionCounter}`;
+            titleEl.textContent = role + ' ' + conditionCounter;
 
             function updateCompareMode() {
-                if (compareModeSelect.value === "FIELD") {
-                    valueModeBox.style.display = "none";
+                const mode = compareModeSelect.value || "VALUE";
+
+                valueModeBox.style.display = "none";
+                fieldModeBox.style.display = "none";
+                categoryModeBox.style.display = "none";
+
+                if (mode === "FIELD") {
                     fieldModeBox.style.display = "block";
                     giaTriInput.value = "";
-                } else {
-                    valueModeBox.style.display = "block";
-                    fieldModeBox.style.display = "none";
+                    compareCategorySelect.value = "";
+                    compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                } else if (mode === "CATEGORY") {
+                    categoryModeBox.style.display = "block";
+                    giaTriInput.value = "";
                     compareXmlSelect.value = "";
                     compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
+                } else {
+                    valueModeBox.style.display = "block";
+                    compareXmlSelect.value = "";
+                    compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
+                    compareCategorySelect.value = "";
+                    compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
                 }
-                // updateHints();
+
+                updateHints();
             }
 
             function updateHints() {
@@ -276,7 +374,7 @@
                 hintFieldCompare.textContent = "";
 
                 if (compareModeSelect.value === "VALUE") {
-                    if (conditionCode === "IN_LIST") {
+                    if (conditionCode === "IN_LIST" || conditionCode === "NOT_IN_LIST") {
                         hintValue.textContent = "Nhập nhiều giá trị cách nhau dấu phẩy. Ví dụ: 7,8";
                     } else if (isRangeCondition(conditionCode)) {
                         hintValue.textContent = "Nhập khoảng dạng start-end. Ví dụ: 18-06 hoặc 07-17";
@@ -289,7 +387,7 @@
 
                 if (compareModeSelect.value === "FIELD") {
                     if (sourceItemType === "MULTI" && compareItemType === "MULTI") {
-                        hintFieldCompare.textContent = "Nếu chọn cùng field trên XML MULTI, engine sẽ so từng cặp item và loại trừ chính nó. Rule ALL_HOSO sẽ gom cả batch.";
+                        hintFieldCompare.textContent = "Nếu chọn cùng field trên XML MULTI, engine sẽ so từng cặp item và loại trừ chính nó.";
                     } else if (sourceItemType === "SINGLE" && compareItemType === "MULTI") {
                         hintFieldCompare.textContent = "Field đơn sẽ được so với toàn bộ item của XML MULTI.";
                     } else if (sourceItemType === "MULTI" && compareItemType === "SINGLE") {
@@ -305,7 +403,7 @@
                         giaTriInput.placeholder = "Ví dụ: 7,8";
                     }
                 } else if (datePart === "HOUR") {
-                    hintDatePart.textContent = "Giờ từ 0-23. Ngoài giờ hành chính có thể nhập BETWEEN 18-06.";
+                    hintDatePart.textContent = "Giờ từ 0-23. Có thể nhập BETWEEN 18-06.";
                     if (!giaTriInput.value.trim() && isRangeCondition(conditionCode)) {
                         giaTriInput.placeholder = "Ví dụ: 18-06";
                     }
@@ -316,12 +414,16 @@
 
             xmlSelect.addEventListener("change", function () {
                 loadFieldsByXml(this.value, fieldSelect, "");
-                // updateHints();
+                updateHints();
             });
 
             compareXmlSelect.addEventListener("change", function () {
                 loadFieldsByXml(this.value, compareFieldSelect, "");
-                // updateHints();
+                updateHints();
+            });
+
+            compareCategorySelect.addEventListener("change", function () {
+                loadCategoryFields(this.value, compareCategoryFieldSelect, "");
             });
 
             compareModeSelect.addEventListener("change", updateCompareMode);
@@ -341,6 +443,8 @@
                     compare_mode: compareModeSelect.value || "VALUE",
                     compare_xml_id: compareXmlSelect.value || "",
                     compare_field_id: compareFieldSelect.value || "",
+                    compare_category_id: compareCategorySelect.value || "",
+                    compare_category_field_id: compareCategoryFieldSelect.value || "",
                     gia_tri: giaTriInput.value || "",
                     date_part: datePartSelect.value || ""
                 };
@@ -354,107 +458,95 @@
 
                 conditionSelect.value = data.condition_id || "";
                 compareModeSelect.value = data.compare_mode || "VALUE";
+
+                await loadCategories(compareCategorySelect, data.compare_category_id || "");
                 updateCompareMode();
 
                 if ((data.compare_mode || "VALUE") === "FIELD") {
                     compareXmlSelect.value = data.compare_xml_id || "";
                     await loadFieldsByXml(data.compare_xml_id || "", compareFieldSelect, data.compare_field_id || "");
+                } else if ((data.compare_mode || "VALUE") === "CATEGORY") {
+                    await loadCategoryFields(data.compare_category_id || "", compareCategoryFieldSelect, data.compare_category_field_id || "");
+                } else {
+                    giaTriInput.value = data.gia_tri || "";
                 }
 
-                giaTriInput.value = data.gia_tri || "";
                 datePartSelect.value = data.date_part || "";
-                // updateHints();
+                if ((data.compare_mode || "VALUE") === "VALUE") {
+                    giaTriInput.value = data.gia_tri || "";
+                }
+
+                updateHints();
             }
 
+            conditionsContainer.appendChild(node);
             applyPrefill();
-            return node;
-        }
-
-        function addCondition(prefill) {
-            const card = createConditionCard(prefill || {});
-            conditionsContainer.appendChild(card);
             updateTitles();
         }
 
-        function collectPayload() {
-            const conditions = [];
-            conditionsContainer.querySelectorAll(".condition-card").forEach(function (cardEl) {
-                conditions.push(cardEl.getPayload());
-            });
-            return { conditions };
-        }
-
-        function findConditionOptionByValue(value) {
-            const sampleSelect = document.querySelector(".input-condition");
-            if (!sampleSelect) return null;
-            return Array.from(sampleSelect.options).find(function (opt) {
-                return String(opt.value) === String(value);
-            }) || null;
-        }
-
-        function validatePayload(payload) {
-            if (!payload.conditions.length) {
-                alert(`Phải có ít nhất 1 ${role.toLowerCase()}.`);
-                return false;
-            }
-
-            payload.conditions.forEach(function (cond) {
-                if (!cond.xml_id) {
-                    throw new Error(`${role}: thiếu XML nguồn.`);
-                }
-                if (!cond.field_id) {
-                    throw new Error(`${role}: thiếu field nguồn.`);
-                }
-                if (!cond.condition_id) {
-                    throw new Error(`${role}: thiếu condition.`);
-                }
-                if (cond.compare_mode === "FIELD") {
-                    if (!cond.compare_xml_id) {
-                        throw new Error(`${role}: thiếu XML so sánh.`);
-                    }
-                    if (!cond.compare_field_id) {
-                        throw new Error(`${role}: thiếu field so sánh.`);
-                    }
-                }
-
-                if (cond.compare_mode === "VALUE") {
-                    const conditionOption = findConditionOptionByValue(cond.condition_id);
-                    const code = conditionOption ? (conditionOption.dataset.code || "").toUpperCase() : "";
-
-                    if (isRangeCondition(code) && cond.gia_tri && !cond.gia_tri.includes("-")) {
-                        throw new Error("Điều kiện khoảng phải nhập dạng start-end, ví dụ 18-06.");
-                    }
-                }
-            });
-
-            return true;
-        }
-
         btnAddCondition.addEventListener("click", function () {
-            addCondition({});
+            createConditionCard({
+                compare_mode: "VALUE"
+            });
         });
 
         form.addEventListener("submit", function (e) {
-            try {
-                const payload = collectPayload();
-                const ok = validatePayload(payload);
-                if (!ok) {
+            const cards = conditionsContainer.querySelectorAll(".condition-card");
+            const payload = {
+                conditions: []
+            };
+
+            if (!cards.length) {
+                e.preventDefault();
+                alert("Phải có ít nhất 1 điều kiện.");
+                return;
+            }
+
+            for (let i = 0; i < cards.length; i++) {
+                const row = cards[i].getPayload();
+
+                if (!row.field_id) {
                     e.preventDefault();
+                    alert("Có điều kiện chưa chọn field nguồn.");
                     return;
                 }
-                payloadInput.value = JSON.stringify(payload);
-            } catch (err) {
-                e.preventDefault();
-                alert(err.message || "Dữ liệu chưa hợp lệ.");
+
+                if (!row.condition_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện chưa chọn condition.");
+                    return;
+                }
+
+                if (row.compare_mode === "FIELD" && !row.compare_field_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu FIELD nhưng chưa chọn field so sánh.");
+                    return;
+                }
+
+                if (row.compare_mode === "CATEGORY" && !row.compare_category_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu CATEGORY nhưng chưa chọn danh mục.");
+                    return;
+                }
+
+                if (row.compare_mode === "CATEGORY" && !row.compare_category_field_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu CATEGORY nhưng chưa chọn field danh mục.");
+                    return;
+                }
+
+                payload.conditions.push(row);
             }
+
+            payloadInput.value = JSON.stringify(payload);
         });
 
-        if (initialPayload && Array.isArray(initialPayload.conditions) && initialPayload.conditions.length) {
-            initialPayload.conditions.forEach(function (item) {
-                addCondition(item);
+        if (initialPayload && initialPayload.conditions && initialPayload.conditions.length) {
+            initialPayload.conditions.forEach(function (row) {
+                createConditionCard(row);
             });
         } else {
-            addCondition({});
+            createConditionCard({ compare_mode: "VALUE" });
         }
     })();
     </script>

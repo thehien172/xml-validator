@@ -7,3 +7,4 @@ from models.field_model import DanhMucTruongDuLieu
 from models.condition_model import DanhMucDieuKien
 from models.rule_model import BoRule, Rule, RuleDetail, RuleUnit
 from models.system_model import HeThong, DonVi
+from models.category_model import DanhMuc, DanhMucField, DanhMucRecord, DanhMucRecordValue, DanhMucDataset

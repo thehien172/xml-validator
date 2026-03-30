@@ -95,7 +95,6 @@
             margin: 0;
             font-size: 38px;
             line-height: 1.15;
-            /* font-weight: 800; */
             color: #0f172a;
         }
 
@@ -162,6 +161,7 @@
         input[type="date"],
         input[type="file"],
         input[type="password"],
+        input[type="number"],
         select,
         textarea {
             width: 100%;
@@ -194,7 +194,8 @@
             gap: 10px;
             margin-top: 8px;
         }
-        .actions-center{
+
+        .actions-center {
             justify-content: center;
         }
 
@@ -305,18 +306,16 @@
             color: #1e3a8a;
             font-size: 14px;
             font-weight: 700;
-            text-align: left;
+            text-align: center;
             padding: 14px 12px;
             border-bottom: 1px solid var(--border);
-            text-align: center;
         }
 
         td {
             padding: 14px 12px;
             border-bottom: 1px solid #e5e7eb;
-            vertical-align: top;
-            font-size: 14px;
             vertical-align: middle;
+            font-size: 14px;
             text-align: center;
         }
 
@@ -348,12 +347,15 @@
             margin: 8px 0 0 0;
         }
 
-        @media (max-width: 900px) {
+        .inline {
+            display: inline;
+        }
 
+        @media (max-width: 900px) {
             .col-6,
             .col-4,
             .col-3 {
-                grid-column: span 12;
+                width: 100%;
             }
 
             .page-title {
@@ -377,6 +379,7 @@
                 <a href="/units">Đơn vị</a>
                 <a href="/xmls">Danh mục XML</a>
                 <a href="/fields">Trường dữ liệu</a>
+                <a href="/categories">Danh mục</a>
                 <a href="/rule-sets">Bộ rule</a>
                 <a href="/rules">Rules</a>
             </nav>

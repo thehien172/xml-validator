@@ -4,7 +4,17 @@ from datetime import datetime
 from lxml import etree
 from sqlalchemy import or_
 
-from models import DanhMucXml, Rule, RuleUnit
+from models import (
+    db,
+    DanhMucXml,
+    Rule,
+    RuleUnit,
+    DanhMuc,
+    DanhMucField,
+    DanhMucDataset,
+    DanhMucRecord,
+    DanhMucRecordValue
+)
 from services.xml_parser_service import (
     get_hoso_nodes,
     build_xml_data_map_for_hoso,
@@ -14,6 +24,7 @@ from services.xml_parser_service import (
     get_hoso_raw_xml
 )
 
+CATEGORY_COMPARE_SKIP = "__CATEGORY_COMPARE_SKIP__"
 
 def parse_date(value):
     if not value:
@@ -47,16 +58,12 @@ def extract_date_part(value, part):
 
     if part == "DAY_OF_WEEK":
         return dt.weekday() + 2
-
     if part == "DAY":
         return dt.day
-
     if part == "MONTH":
         return dt.month
-
     if part == "YEAR":
         return dt.year
-
     if part == "HOUR":
         return dt.hour
 
@@ -112,7 +119,6 @@ def is_between_value(actual_value, expected_value):
         return False
 
     start_num = try_parse_number(start_raw)
-    end_num = try_parse_number(start_raw)
     end_num = try_parse_number(end_raw)
 
     if start_num is None or end_num is None:
@@ -127,31 +133,24 @@ def is_between_value(actual_value, expected_value):
 def check_condition(actual_value, condition_code, expected_value=None):
     actual_value = normalize_value(actual_value)
 
-    # ===== CASE expected là LIST (so với nhiều giá trị) =====
     if isinstance(expected_value, list):
         expected_list = normalize_list(expected_value)
 
         if condition_code == "EQUAL":
             return actual_value in expected_list
-
         if condition_code == "NOT_EQUAL":
             return actual_value not in expected_list
-
         if condition_code == "IN_LIST":
             return actual_value in expected_list
-
         if condition_code == "NOT_IN_LIST":
             return actual_value not in expected_list
-
         if condition_code == "NOT_NULL":
             return actual_value is not None and actual_value != ""
-
         if condition_code == "IS_NULL":
             return actual_value is None or actual_value == ""
 
         return False
 
-    # ===== CASE expected là VALUE =====
     expected_value = normalize_value(expected_value)
 
     if condition_code == "IS_NULL":
@@ -217,6 +216,12 @@ def build_compare_text(detail):
     if detail.compare_mode == "FIELD" and detail.compare_field:
         return f"So sánh với field {detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
 
+    if detail.compare_mode == "CATEGORY" and detail.compare_category and detail.compare_category_field:
+        return (
+            f"So sánh với danh mục {detail.compare_category.ten_danh_muc}"
+            f" / field {detail.compare_category_field.ma_truong}"
+        )
+
     if detail.gia_tri:
         if detail.condition.ma_dieu_kien == "BETWEEN":
             return f"Giá trị phải nằm trong khoảng {detail.gia_tri}"
@@ -232,13 +237,108 @@ def apply_date_part_if_needed(value, date_part):
         return extract_date_part(value, date_part)
     return value
 
+def get_category_dataset(category, don_vi_id=None):
+    if not category:
+        return None
 
-def get_expected_value_for_detail(detail, xml_data_map, current_item):
+    scope = (category.scope or "COMMON").strip().upper()
+
+    if scope == "COMMON":
+        return (
+            DanhMucDataset.query
+            .filter(DanhMucDataset.danh_muc_id == category.id)
+            .filter(DanhMucDataset.don_vi_id.is_(None))
+            .order_by(DanhMucDataset.id.asc())
+            .first()
+        )
+
+    if not don_vi_id:
+        return None
+
+    return (
+        DanhMucDataset.query
+        .filter(DanhMucDataset.danh_muc_id == category.id)
+        .filter(DanhMucDataset.don_vi_id == don_vi_id)
+        .order_by(DanhMucDataset.id.asc())
+        .first()
+    )
+
+
+def ensure_common_dataset(category):
+    if not category:
+        return None
+
+    dataset = (
+        DanhMucDataset.query
+        .filter(DanhMucDataset.danh_muc_id == category.id)
+        .filter(DanhMucDataset.don_vi_id.is_(None))
+        .first()
+    )
+    if dataset:
+        return dataset
+
+    dataset = DanhMucDataset(
+        danh_muc_id=category.id,
+        don_vi_id=None,
+        ten_bo_du_lieu="Bộ dữ liệu chung"
+    )
+    db.session.add(dataset)
+    db.session.flush()
+    return dataset
+
+def get_category_expected_values(detail, don_vi_id=None):
+    if detail.compare_mode != "CATEGORY":
+        return CATEGORY_COMPARE_SKIP
+
+    if not detail.compare_category_id or not detail.compare_category_field_id:
+        return CATEGORY_COMPARE_SKIP
+
+    category = DanhMuc.query.get(detail.compare_category_id)
+    category_field = DanhMucField.query.get(detail.compare_category_field_id)
+
+    if not category or not category_field:
+        return CATEGORY_COMPARE_SKIP
+
+    if category_field.danh_muc_id != category.id:
+        return CATEGORY_COMPARE_SKIP
+
+    dataset = get_category_dataset(category, don_vi_id=don_vi_id)
+    if not dataset:
+        return CATEGORY_COMPARE_SKIP
+
+    records = (
+        DanhMucRecord.query
+        .filter_by(dataset_id=dataset.id)
+        .order_by(DanhMucRecord.id.asc())
+        .all()
+    )
+    if not records:
+        return CATEGORY_COMPARE_SKIP
+
+    record_ids = [r.id for r in records]
+    values = (
+        DanhMucRecordValue.query
+        .filter(DanhMucRecordValue.record_id.in_(record_ids))
+        .filter(DanhMucRecordValue.field_id == category_field.id)
+        .all()
+    )
+
+    result = []
+    for val in values:
+        text = normalize_value(val.value)
+        if text:
+            result.append(text)
+
+    if not result:
+        return CATEGORY_COMPARE_SKIP
+
+    return result
+
+def get_expected_value_for_detail(detail, xml_data_map, current_item, don_vi_id=None):
     if detail.compare_mode == "FIELD" and detail.compare_field:
         source_xml_code = detail.field.xml.ma_xml
         target_xml_code = detail.compare_field.xml.ma_xml
 
-        # Cùng XML nhưng khác field => so trong cùng item như cũ
         if source_xml_code == target_xml_code and detail.field_id != detail.compare_field_id:
             compare_val = get_value_from_item(current_item, detail.compare_field.xml_path)
             return apply_date_part_if_needed(compare_val, detail.date_part)
@@ -255,14 +355,27 @@ def get_expected_value_for_detail(detail, xml_data_map, current_item):
 
         return values
 
+    if detail.compare_mode == "CATEGORY":
+        values = get_category_expected_values(detail, don_vi_id=don_vi_id)
+        if values == CATEGORY_COMPARE_SKIP:
+            return CATEGORY_COMPARE_SKIP
+        return [apply_date_part_if_needed(v, detail.date_part) for v in values]
+
     return detail.gia_tri
 
-
-def evaluate_detail_on_item(detail, xml_data_map, item):
+def evaluate_detail_on_item(detail, xml_data_map, item, don_vi_id=None):
     actual_value = get_value_from_item(item, detail.field.xml_path)
     actual_value = apply_date_part_if_needed(actual_value, detail.date_part)
 
-    expected_value = get_expected_value_for_detail(detail, xml_data_map, item)
+    expected_value = get_expected_value_for_detail(
+        detail=detail,
+        xml_data_map=xml_data_map,
+        current_item=item,
+        don_vi_id=don_vi_id
+    )
+
+    if expected_value == CATEGORY_COMPARE_SKIP:
+        return True
 
     return check_condition(
         actual_value=actual_value,
@@ -271,14 +384,14 @@ def evaluate_detail_on_item(detail, xml_data_map, item):
     )
 
 
-def evaluate_detail_group_on_item(detail_group, xml_data_map, item):
+def evaluate_detail_group_on_item(detail_group, xml_data_map, item, don_vi_id=None):
     for detail in detail_group:
-        if not evaluate_detail_on_item(detail, xml_data_map, item):
+        if not evaluate_detail_on_item(detail, xml_data_map, item, don_vi_id=don_vi_id):
             return False
     return True
 
 
-def evaluate_trigger_group_any_item(detail_group, xml_data_map):
+def evaluate_trigger_group_any_item(detail_group, xml_data_map, don_vi_id=None):
     if not detail_group:
         return True
 
@@ -287,7 +400,7 @@ def evaluate_trigger_group_any_item(detail_group, xml_data_map):
     items = xml_info.get("items", [])
 
     for item in items:
-        if evaluate_detail_group_on_item(detail_group, xml_data_map, item):
+        if evaluate_detail_group_on_item(detail_group, xml_data_map, item, don_vi_id=don_vi_id):
             return True
 
     return False
@@ -312,11 +425,7 @@ def rule_uses_pairwise_mode(rule):
 
 def serialize_item_xml(item):
     try:
-        return etree.tostring(
-            item,
-            encoding="unicode",
-            pretty_print=True
-        )
+        return etree.tostring(item, encoding="unicode", pretty_print=True)
     except Exception:
         return ""
 
@@ -380,25 +489,18 @@ def collect_occurrences_for_xml(contexts, xml_code):
     return occurrences
 
 
-def collect_scope_contexts_for_rule(rule, contexts, current_context=None):
-    run_scope = (getattr(rule, "run_scope", "ONE_HOSO") or "ONE_HOSO").strip().upper()
-
-    if run_scope == "ALL_HOSO":
-        return contexts
-
-    if current_context is not None:
-        return [current_context]
-
-    return contexts
-
-
-def evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ):
+def evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ, don_vi_id=None):
     actual_value = get_value_from_item(left_occ["item"], detail.field.xml_path)
     actual_value = apply_date_part_if_needed(actual_value, detail.date_part)
 
     if detail.compare_mode == "FIELD" and detail.compare_field:
         expected_value = get_value_from_item(right_occ["item"], detail.compare_field.xml_path)
         expected_value = apply_date_part_if_needed(expected_value, detail.date_part)
+    elif detail.compare_mode == "CATEGORY":
+        expected_value = get_category_expected_values(detail, don_vi_id=don_vi_id)
+        if expected_value == CATEGORY_COMPARE_SKIP:
+            return True, None
+        expected_value = [apply_date_part_if_needed(v, detail.date_part) for v in expected_value]
     else:
         expected_value = detail.gia_tri
 
@@ -421,12 +523,11 @@ def evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ):
         "compare_value": expected_value
     }
 
-
-def evaluate_pairwise_group_on_pair(detail_group, left_occ, right_occ):
+def evaluate_pairwise_group_on_pair(detail_group, left_occ, right_occ, don_vi_id=None):
     failed_fields = []
 
     for detail in detail_group:
-        ok, failed = evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ)
+        ok, failed = evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ, don_vi_id=don_vi_id)
         if not ok:
             failed_fields.append(failed)
 
@@ -551,7 +652,7 @@ def build_pairwise_warning_payload(rule, left_occ, right_occ, failed_fields):
     }
 
 
-def evaluate_pairwise_trigger_group_on_occurrence(detail_group, occ):
+def evaluate_pairwise_trigger_group_on_occurrence(detail_group, occ, don_vi_id=None):
     if not detail_group:
         return True
 
@@ -569,18 +670,18 @@ def evaluate_pairwise_trigger_group_on_occurrence(detail_group, occ):
         else:
             external_trigger_by_xml[trigger_xml_code].append(trigger)
 
-    local_ok = evaluate_detail_group_on_item(local_trigger_details, xml_data_map, item)
+    local_ok = evaluate_detail_group_on_item(local_trigger_details, xml_data_map, item, don_vi_id=don_vi_id)
 
     external_ok = True
     for _, ext_group in external_trigger_by_xml.items():
-        if not evaluate_trigger_group_any_item(ext_group, xml_data_map):
+        if not evaluate_trigger_group_any_item(ext_group, xml_data_map, don_vi_id=don_vi_id):
             external_ok = False
             break
 
     return local_ok and external_ok
 
 
-def occurrence_passes_pairwise_trigger(trigger_groups, occ):
+def occurrence_passes_pairwise_trigger(trigger_groups, occ, don_vi_id=None):
     if not trigger_groups:
         return True
 
@@ -588,13 +689,13 @@ def occurrence_passes_pairwise_trigger(trigger_groups, occ):
         if not trigger_group_details:
             return True
 
-        if evaluate_pairwise_trigger_group_on_occurrence(trigger_group_details, occ):
+        if evaluate_pairwise_trigger_group_on_occurrence(trigger_group_details, occ, don_vi_id=don_vi_id):
             return True
 
     return False
 
 
-def validate_pairwise_rule(rule, contexts):
+def validate_pairwise_rule(rule, contexts, don_vi_id=None):
     details = sorted(rule.details, key=lambda x: (x.group_no or 1, x.sort_order, x.id))
     if not details:
         return
@@ -624,20 +725,14 @@ def validate_pairwise_rule(rule, contexts):
         else:
             occurrence_trigger_details.append(d)
 
-    occurrence_trigger_groups = (
-        group_details_by_group_no(occurrence_trigger_details)
-        if occurrence_trigger_details else []
-    )
-    pairwise_trigger_groups = (
-        group_details_by_group_no(pairwise_trigger_details)
-        if pairwise_trigger_details else []
-    )
+    occurrence_trigger_groups = group_details_by_group_no(occurrence_trigger_details) if occurrence_trigger_details else []
+    pairwise_trigger_groups = group_details_by_group_no(pairwise_trigger_details) if pairwise_trigger_details else []
     validate_groups = group_details_by_group_no(validate_details)
 
     if occurrence_trigger_groups:
         filtered_occurrences = [
             occ for occ in occurrences
-            if occurrence_passes_pairwise_trigger(occurrence_trigger_groups, occ)
+            if occurrence_passes_pairwise_trigger(occurrence_trigger_groups, occ, don_vi_id=don_vi_id)
         ]
     else:
         filtered_occurrences = occurrences
@@ -662,7 +757,10 @@ def validate_pairwise_rule(rule, contexts):
                         break
 
                     ok, _ = evaluate_pairwise_group_on_pair(
-                        trigger_group_details, left_occ, right_occ
+                        trigger_group_details,
+                        left_occ,
+                        right_occ,
+                        don_vi_id=don_vi_id
                     )
                     if ok:
                         pairwise_trigger_pass = True
@@ -676,7 +774,10 @@ def validate_pairwise_rule(rule, contexts):
 
             for _, validate_group_details in validate_groups:
                 ok, current_failed = evaluate_pairwise_group_on_pair(
-                    validate_group_details, left_occ, right_occ
+                    validate_group_details,
+                    left_occ,
+                    right_occ,
+                    don_vi_id=don_vi_id
                 )
                 if ok:
                     validate_pass = True
@@ -715,7 +816,7 @@ def build_single_warning_payload(rule, context, source_xml_code, item, index, fa
     }
 
 
-def validate_one_hoso(context, active_rules):
+def validate_one_hoso(context, active_rules, don_vi_id=None):
     warnings = []
     xml_data_map = context["xml_data_map"]
 
@@ -763,11 +864,16 @@ def validate_one_hoso(context, active_rules):
                         else:
                             external_trigger_by_xml[trigger_xml_code].append(trigger)
 
-                    local_ok = evaluate_detail_group_on_item(local_trigger_details, xml_data_map, item)
+                    local_ok = evaluate_detail_group_on_item(
+                        local_trigger_details,
+                        xml_data_map,
+                        item,
+                        don_vi_id=don_vi_id
+                    )
 
                     external_ok = True
                     for _, ext_group in external_trigger_by_xml.items():
-                        if not evaluate_trigger_group_any_item(ext_group, xml_data_map):
+                        if not evaluate_trigger_group_any_item(ext_group, xml_data_map, don_vi_id=don_vi_id):
                             external_ok = False
                             break
 
@@ -785,7 +891,7 @@ def validate_one_hoso(context, active_rules):
                     current_failed = []
 
                     for detail in validate_group_details:
-                        ok = evaluate_detail_on_item(detail, xml_data_map, item)
+                        ok = evaluate_detail_on_item(detail, xml_data_map, item, don_vi_id=don_vi_id)
 
                         if not ok:
                             actual_value = get_value_from_item(item, detail.field.xml_path)
@@ -864,14 +970,14 @@ def run_validation(tree, don_vi_id=None):
     ]
 
     for context in contexts:
-        context["warnings"].extend(validate_one_hoso(context, normal_rules))
+        context["warnings"].extend(validate_one_hoso(context, normal_rules, don_vi_id=don_vi_id))
 
     for context in contexts:
         for rule in pairwise_rules_one_hoso:
-            validate_pairwise_rule(rule, [context])
+            validate_pairwise_rule(rule, [context], don_vi_id=don_vi_id)
 
     for rule in pairwise_rules_all_hoso:
-        validate_pairwise_rule(rule, contexts)
+        validate_pairwise_rule(rule, contexts, don_vi_id=don_vi_id)
 
     result_by_hoso = []
 

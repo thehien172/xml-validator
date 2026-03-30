@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa danh mục{% else %}Tạo danh mục{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa danh mục{% else %}Tạo danh mục{% endif %}</h1>
+    <div class="page-subtitle">Khai báo danh mục chung hoặc danh mục riêng theo đơn vị.</div>
+</div>
+
+<div class="card">
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" id="category-form">
+        <div class="grid">
+            <div class="col-6">
+                <label>Tên danh mục</label>
+                <input
+                    type="text"
+                    name="ten_danh_muc"
+                    value="{{ item.ten_danh_muc if item else '' }}"
+                    placeholder="Ví dụ: Danh mục mã bác sĩ"
+                >
+            </div>
+
+            <div class="col-6">
+                <label>Phạm vi</label>
+                <select name="scope" id="scope">
+                    <option value="COMMON" {% if item and item.scope == 'COMMON' %}selected{% endif %}>Danh mục chung</option>
+                    <option value="UNIT" {% if item and item.scope == 'UNIT' %}selected{% endif %}>Danh mục riêng</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card-subtitle" style="margin-top: 10px;">
+            <strong>Giải thích:</strong><br>
+            - Danh mục chung: dữ liệu dùng chung cho tất cả đơn vị.<br>
+            - Danh mục riêng: chỉ khai báo danh mục cha, dữ liệu sẽ nhập ở bước "Bộ dữ liệu đơn vị".
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">{% if item %}Lưu{% else %}Tạo{% endif %}</button>
+            <a href="/categories" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

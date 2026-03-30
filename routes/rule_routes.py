@@ -12,22 +12,24 @@ from models import (
     DonVi,
     DanhMucTruongDuLieu,
     DanhMucDieuKien,
-    DanhMucXml
+    DanhMucXml,
+    DanhMuc,
+    DanhMucField,
+    DanhMucDataset,
+    DanhMucRecord,
+    DanhMucRecordValue
 )
 
 rule_bp = Blueprint("rule_bp", __name__, url_prefix="/rules")
 
+
 @rule_bp.route("/<int:rule_id>/toggle-status", methods=["POST"])
 def toggle_rule_status(rule_id):
     rule = Rule.query.get_or_404(rule_id)
-
-    # checkbox có gửi thì là bật, không gửi là tắt
     rule.is_active = "is_active" in request.form
-
     db.session.commit()
-
-    # quay lại trang list (giữ filter nếu có)
     return redirect(request.referrer or url_for("rule_bp.list_rules"))
+
 
 @rule_bp.route("/api/fields-by-xml", methods=["GET"])
 def get_fields_by_xml():
@@ -56,6 +58,54 @@ def get_fields_by_xml():
     return jsonify(result)
 
 
+@rule_bp.route("/api/categories", methods=["GET"])
+def get_categories():
+    items = DanhMuc.query.order_by(
+        DanhMuc.scope.asc(),
+        DanhMuc.ten_danh_muc.asc(),
+        DanhMuc.id.asc()
+    ).all()
+
+    result = []
+    for item in items:
+        scope = (item.scope or "COMMON").upper()
+        label = f"{item.ten_danh_muc} [{'Danh mục riêng' if scope == 'UNIT' else 'Danh mục chung'}]"
+
+        result.append({
+            "id": item.id,
+            "ten_danh_muc": item.ten_danh_muc,
+            "scope": scope,
+            "label": label
+        })
+
+    return jsonify(result)
+
+
+@rule_bp.route("/api/category-fields", methods=["GET"])
+def get_category_fields():
+    category_id = request.args.get("category_id", type=int)
+
+    if not category_id:
+        return jsonify([])
+
+    fields = (
+        DanhMucField.query
+        .filter_by(danh_muc_id=category_id)
+        .order_by(DanhMucField.id.asc())
+        .all()
+    )
+
+    result = []
+    for f in fields:
+        result.append({
+            "id": f.id,
+            "ma_truong": f.ma_truong,
+            "ten_truong": f.ten_truong
+        })
+
+    return jsonify(result)
+
+
 @rule_bp.route("/", methods=["GET"])
 def list_rules():
     keyword = (request.args.get("keyword") or "").strip()
@@ -63,7 +113,8 @@ def list_rules():
     bo_rule_id = (request.args.get("bo_rule_id") or "").strip()
     apply_scope = (request.args.get("apply_scope") or "").strip().upper()
     don_vi_id = (request.args.get("don_vi_id") or "").strip()
-    
+    run_scope = (request.args.get("run_scope") or "").strip()
+
     query = Rule.query.join(BoRule)
 
     if keyword:
@@ -76,9 +127,10 @@ def list_rules():
                 BoRule.ten_bo_rule.ilike(f"%{keyword}%")
             )
         )
-    run_scope = (request.args.get("run_scope") or "").strip()
+
     if run_scope:
         query = query.filter(Rule.run_scope == run_scope)
+
     if status == "active":
         query = query.filter(Rule.is_active.is_(True))
     elif status == "inactive":
@@ -131,6 +183,7 @@ def create_rule():
             apply_scope = ((request.form.get("apply_scope") or "ALL").strip().upper())
             unit_ids = request.form.getlist("unit_ids")
             run_scope = (request.form.get("run_scope") or "ONE_HOSO").strip().upper()
+
             if not bo_rule_id:
                 raise ValueError("Vui lòng chọn bộ rule.")
             if not ten_rule:
@@ -156,8 +209,7 @@ def create_rule():
 
             if apply_scope == "UNIT":
                 for uid in unit_ids:
-                    uid_int = int(uid)
-                    db.session.add(RuleUnit(rule_id=rule.id, don_vi_id=uid_int))
+                    db.session.add(RuleUnit(rule_id=rule.id, don_vi_id=int(uid)))
 
             db.session.commit()
             return redirect(url_for("rule_bp.list_rules"))
@@ -214,11 +266,9 @@ def edit_rule(rule_id):
             item.run_scope = run_scope
 
             RuleUnit.query.filter_by(rule_id=item.id).delete()
-
             if apply_scope == "UNIT":
                 for uid in unit_ids:
-                    uid_int = int(uid)
-                    db.session.add(RuleUnit(rule_id=item.id, don_vi_id=uid_int))
+                    db.session.add(RuleUnit(rule_id=item.id, don_vi_id=int(uid)))
 
             db.session.commit()
             return redirect(url_for("rule_bp.list_rules"))
@@ -346,6 +396,8 @@ def create_rule_detail_group(rule_id, role):
                     sort_order=row["sort_order"],
                     compare_mode=row["compare_mode"],
                     compare_field_id=row["compare_field_id"],
+                    compare_category_id=row["compare_category_id"],
+                    compare_category_field_id=row["compare_category_field_id"],
                     date_part=row["date_part"],
                     group_no=row["group_no"]
                 )
@@ -423,6 +475,8 @@ def edit_rule_detail_group(rule_id, role, group_no):
                     sort_order=row["sort_order"],
                     compare_mode=row["compare_mode"],
                     compare_field_id=row["compare_field_id"],
+                    compare_category_id=row["compare_category_id"],
+                    compare_category_field_id=row["compare_category_field_id"],
                     date_part=row["date_part"],
                     group_no=row["group_no"]
                 )
@@ -504,6 +558,8 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
     condition_id = to_int_or_none(payload.get("condition_id"))
     compare_mode = (payload.get("compare_mode") or "VALUE").strip().upper()
     compare_field_id = to_int_or_none(payload.get("compare_field_id"))
+    compare_category_id = to_int_or_none(payload.get("compare_category_id"))
+    compare_category_field_id = to_int_or_none(payload.get("compare_category_field_id"))
     gia_tri = (payload.get("gia_tri") or "").strip() or None
     date_part = (payload.get("date_part") or "").strip() or None
 
@@ -511,7 +567,7 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
         raise ValueError(f"{condition_role}: thiếu field.")
     if condition_id is None:
         raise ValueError(f"{condition_role}: thiếu condition.")
-    if compare_mode not in ["VALUE", "FIELD"]:
+    if compare_mode not in ["VALUE", "FIELD", "CATEGORY"]:
         raise ValueError(f"{condition_role}: compare_mode không hợp lệ.")
 
     field = DanhMucTruongDuLieu.query.get(field_id)
@@ -528,9 +584,32 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
         compare_field = DanhMucTruongDuLieu.query.get(compare_field_id)
         if not compare_field:
             raise ValueError(f"{condition_role}: field so sánh không tồn tại.")
+
         gia_tri = None
+        compare_category_id = None
+        compare_category_field_id = None
+
+    elif compare_mode == "CATEGORY":
+        if compare_category_id is None:
+            raise ValueError(f"{condition_role}: thiếu danh mục so sánh.")
+        if compare_category_field_id is None:
+            raise ValueError(f"{condition_role}: thiếu field danh mục so sánh.")
+
+        category = DanhMuc.query.get(compare_category_id)
+        if not category:
+            raise ValueError(f"{condition_role}: danh mục không tồn tại.")
+
+        category_field = DanhMucField.query.get(compare_category_field_id)
+        if not category_field or category_field.danh_muc_id != compare_category_id:
+            raise ValueError(f"{condition_role}: field danh mục không tồn tại hoặc không thuộc danh mục đã chọn.")
+
+        gia_tri = None
+        compare_field_id = None
+
     else:
         compare_field_id = None
+        compare_category_id = None
+        compare_category_field_id = None
 
     condition_code = (condition.ma_dieu_kien or "").upper()
     if condition_code in ["BETWEEN", "NOT_BETWEEN"] and compare_mode == "VALUE":
@@ -548,27 +627,31 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
         "sort_order": sort_order,
         "compare_mode": compare_mode,
         "compare_field_id": compare_field_id,
+        "compare_category_id": compare_category_id,
+        "compare_category_field_id": compare_category_field_id,
         "date_part": date_part,
         "group_no": group_no
     }
 
 
 def build_initial_group_payload(group_details):
-    conditions = []
+    result = {"conditions": []}
 
-    for d in group_details:
-        conditions.append({
-            "xml_id": d.field.xml_id if d.field else "",
-            "field_id": d.field_id or "",
-            "condition_id": d.condition_id or "",
-            "compare_mode": d.compare_mode or "VALUE",
-            "compare_xml_id": d.compare_field.xml_id if d.compare_field else "",
-            "compare_field_id": d.compare_field_id or "",
-            "gia_tri": d.gia_tri or "",
-            "date_part": d.date_part or ""
+    for detail in group_details:
+        result["conditions"].append({
+            "xml_id": detail.field.xml_id if detail.field else "",
+            "field_id": detail.field_id or "",
+            "condition_id": detail.condition_id or "",
+            "compare_mode": detail.compare_mode or "VALUE",
+            "compare_xml_id": detail.compare_field.xml_id if detail.compare_field else "",
+            "compare_field_id": detail.compare_field_id or "",
+            "compare_category_id": detail.compare_category_id or "",
+            "compare_category_field_id": detail.compare_category_field_id or "",
+            "gia_tri": detail.gia_tri or "",
+            "date_part": detail.date_part or ""
         })
 
-    return {"conditions": conditions}
+    return result
 
 
 def build_grouped_details(details):
@@ -577,31 +660,33 @@ def build_grouped_details(details):
         "VALIDATE": []
     }
 
-    map_by_role = {
+    map_data = {
         "TRIGGER": {},
         "VALIDATE": {}
     }
 
-    for d in details:
-        role = (d.condition_role or "").upper()
-        if role not in map_by_role:
+    for detail in details:
+        role = (detail.condition_role or "").strip().upper()
+        if role not in map_data:
             continue
 
-        group_no = d.group_no or 1
-        if group_no not in map_by_role[role]:
-            map_by_role[role][group_no] = {
-                "role": role,
+        group_no = detail.group_no or 1
+        if group_no not in map_data[role]:
+            map_data[role][group_no] = {
                 "group_no": group_no,
                 "details": []
             }
 
-        map_by_role[role][group_no]["details"].append(d)
+        map_data[role][group_no]["details"].append(detail)
 
     for role in ["TRIGGER", "VALIDATE"]:
-        grouped[role] = [
-            map_by_role[role][key]
-            for key in sorted(map_by_role[role].keys())
-        ]
+        for group_no in sorted(map_data[role].keys()):
+            group = map_data[role][group_no]
+            group["details"] = sorted(
+                group["details"],
+                key=lambda x: (x.sort_order or 1, x.id or 0)
+            )
+            grouped[role].append(group)
 
     return grouped
 
@@ -609,5 +694,9 @@ def build_grouped_details(details):
 def to_int_or_none(value):
     if value is None:
         return None
-    value = str(value).strip()
-    return int(value) if value else None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    return int(text)

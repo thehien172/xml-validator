@@ -18,6 +18,19 @@
         {% else %}
             Trong từng hồ sơ
         {% endif %}
+        <br>
+        <strong>Phạm vi áp dụng:</strong>
+        {% if rule.apply_scope == 'UNIT' %}
+            Đơn vị
+            {% if applied_units %}
+                -
+                {% for u in applied_units %}
+                    {{ u.ten_don_vi }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% else %}
+            Tất cả
+        {% endif %}
     </div>
 
     <form method="GET">
@@ -59,6 +72,22 @@
     </form>
 </div>
 
+{% macro render_compare_value(d) %}
+    {% if d.compare_mode == 'FIELD' and d.compare_field %}
+        {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
+    {% elif d.compare_mode == 'CATEGORY' and d.compare_category and d.compare_category_field %}
+        {{ d.compare_category.ten_danh_muc }}
+        {% if d.compare_category.scope == 'UNIT' %}
+            [Đơn vị]
+        {% else %}
+            [Dùng chung]
+        {% endif %}
+        | {{ d.compare_category_field.ma_truong }} | {{ d.compare_category_field.ten_truong }}
+    {% else %}
+        {{ d.gia_tri or '' }}
+    {% endif %}
+{% endmacro %}
+
 {% if grouped_details['TRIGGER'] %}
 <div class="card">
     <h2 class="card-title">Danh sách nhóm TRIGGER</h2>
@@ -88,7 +117,7 @@
                         <th style="width:110px;">Loại XML</th>
                         <th style="width:130px;">So sánh</th>
                         <th>Condition</th>
-                        <th>Giá trị / Field so sánh</th>
+                        <th>Giá trị / Field / Danh mục</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -106,15 +135,7 @@
                                 <br><small style="color:#6b7280;">Date part: {{ d.date_part }}</small>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if d.compare_mode == 'FIELD' and d.compare_field %}
-                                {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
-                                {% if d.field_id == d.compare_field_id and d.field.xml.item_type == 'MULTI' %}
-                                {% endif %}
-                            {% else %}
-                                {{ d.gia_tri or '' }}
-                            {% endif %}
-                        </td>
+                        <td>{{ render_compare_value(d) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -154,7 +175,7 @@
                         <th style="width:110px;">Loại XML</th>
                         <th style="width:130px;">So sánh</th>
                         <th>Condition</th>
-                        <th>Giá trị / Field so sánh</th>
+                        <th>Giá trị / Field / Danh mục</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -172,15 +193,7 @@
                                 <br><small style="color:#6b7280;">Date part: {{ d.date_part }}</small>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if d.compare_mode == 'FIELD' and d.compare_field %}
-                                {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
-                                {% if d.field_id == d.compare_field_id and d.field.xml.item_type == 'MULTI' %}
-                                {% endif %}
-                            {% else %}
-                                {{ d.gia_tri or '' }}
-                            {% endif %}
-                        </td>
+                        <td>{{ render_compare_value(d) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -209,7 +222,7 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div style="font-size: 14px; color: #6b7280;">Chưa có trigger.</div>
+            <div class="muted">Không có trigger.</div>
         {% endif %}
     </div>
 
@@ -228,14 +241,8 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div style="font-size: 14px; color: #6b7280;">Chưa có validate.</div>
+            <div class="muted">Không có validate.</div>
         {% endif %}
     </div>
 </div>
-
-{% if not grouped_details['TRIGGER'] and not grouped_details['VALIDATE'] %}
-<div class="card">
-    <div class="empty-state">Chưa có detail nào cho rule này.</div>
-</div>
-{% endif %}
 {% endblock %}

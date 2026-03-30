@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Bộ dữ liệu đơn vị{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Bộ dữ liệu đơn vị: {{ item.ten_danh_muc }}</h1>
+    <div class="page-subtitle">
+        Danh mục riêng chỉ chọn 1 lần trong rule detail. Khi validate, engine sẽ tự map đơn vị để lấy bộ dữ liệu tương ứng.
+    </div>
+</div>
+
+{% if error %}
+<div class="card">
+    <div class="alert alert-error">{{ error }}</div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2 class="card-title">Thêm bộ dữ liệu đơn vị</h2>
+
+    <form method="POST">
+        <input type="hidden" name="action" value="create">
+
+        <div class="grid">
+            <div class="col-6">
+                <label>Đơn vị</label>
+                <select name="don_vi_id">
+                    <option value="">-- Chọn đơn vị --</option>
+                    {% for u in units %}
+                    <option value="{{ u.id }}">{{ u.ten_don_vi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-6">
+                <label>Tên bộ dữ liệu</label>
+                <input type="text" name="ten_bo_du_lieu" placeholder="Ví dụ: Bộ dữ liệu mã bác sĩ BV A">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">+ Thêm bộ dữ liệu</button>
+            <a href="/categories/{{ item.id }}/fields" class="btn btn-secondary">Field</a>
+            <a href="/categories" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Danh sách bộ dữ liệu</h2>
+
+    {% if datasets %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:80px;">ID</th>
+                    <th>Đơn vị</th>
+                    <th>Tên bộ dữ liệu</th>
+                    <th style="width:240px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ds in datasets %}
+                <tr>
+                    <td>{{ ds.id }}</td>
+                    <td>{{ ds.don_vi.ten_don_vi if ds.don_vi else '-' }}</td>
+                    <td>{{ ds.ten_bo_du_lieu }}</td>
+                    <td>
+                        <div class="actions actions-center">
+                            <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets/{{ ds.id }}/records">Dữ liệu</a>
+                            <form class="inline" method="POST" action="/categories/{{ item.id }}/datasets/{{ ds.id }}/delete" onsubmit="return confirm('Xóa bộ dữ liệu này?');">
+                                <button class="btn btn-danger" type="submit">Xóa</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Chưa có bộ dữ liệu đơn vị nào.</div>
+    {% endif %}
+</div>
+{% endblock %}
