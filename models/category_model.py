@@ -29,7 +29,6 @@ class DanhMuc(db.Model):
     def __repr__(self):
         return f"<DanhMuc {self.ten_danh_muc}>"
 
-
 class DanhMucField(db.Model):
     __tablename__ = "danh_muc_field"
 
@@ -37,17 +36,12 @@ class DanhMucField(db.Model):
     danh_muc_id = db.Column(db.Integer, db.ForeignKey("danh_muc.id"), nullable=False)
 
     ma_truong = db.Column(db.String(100), nullable=False)
-    ten_truong = db.Column(db.String(255), nullable=False)
 
     danh_muc = db.relationship("DanhMuc", back_populates="fields")
 
     __table_args__ = (
         db.UniqueConstraint("danh_muc_id", "ma_truong", name="uq_dm_field"),
     )
-
-    def __repr__(self):
-        return f"<DanhMucField {self.ma_truong}>"
-
 
 class DanhMucDataset(db.Model):
     __tablename__ = "danh_muc_dataset"

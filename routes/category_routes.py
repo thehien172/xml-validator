@@ -166,8 +166,7 @@ def get_category_fields_api():
     for f in fields:
         result.append({
             "id": f.id,
-            "ma_truong": f.ma_truong,
-            "ten_truong": f.ten_truong
+            "ma_truong": f.ma_truong
         })
 
     return jsonify(result)
@@ -184,12 +183,9 @@ def manage_category_fields(category_id):
         try:
             if action == "create":
                 ma_truong = (request.form.get("ma_truong") or "").strip()
-                ten_truong = (request.form.get("ten_truong") or "").strip()
 
                 if not ma_truong:
                     raise ValueError("Vui lòng nhập mã trường.")
-                if not ten_truong:
-                    raise ValueError("Vui lòng nhập tên trường.")
 
                 existed = DanhMucField.query.filter_by(
                     danh_muc_id=item.id,
@@ -200,8 +196,7 @@ def manage_category_fields(category_id):
 
                 db.session.add(DanhMucField(
                     danh_muc_id=item.id,
-                    ma_truong=ma_truong,
-                    ten_truong=ten_truong
+                    ma_truong=ma_truong
                 ))
                 db.session.commit()
 
@@ -590,7 +585,6 @@ def build_field_map(fields):
     result = {}
     for field in fields:
         result[(field.ma_truong or "").strip().lower()] = field
-        result[(field.ten_truong or "").strip().lower()] = field
     return result
 
 
@@ -599,13 +593,9 @@ def find_value_by_field(row_dict, field, field_map):
         return None
 
     ma_key = (field.ma_truong or "").strip()
-    ten_key = (field.ten_truong or "").strip()
 
     if ma_key in row_dict:
         return row_dict.get(ma_key)
-
-    if ten_key in row_dict:
-        return row_dict.get(ten_key)
 
     lowered = {}
     for k, v in row_dict.items():
@@ -613,9 +603,6 @@ def find_value_by_field(row_dict, field, field_map):
 
     if ma_key.lower() in lowered:
         return lowered.get(ma_key.lower())
-
-    if ten_key.lower() in lowered:
-        return lowered.get(ten_key.lower())
 
     return None
 

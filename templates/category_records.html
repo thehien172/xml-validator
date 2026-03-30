@@ -25,13 +25,6 @@
     <div class="records-toolbar">
         <div class="records-toolbar__left">
             <h2 class="card-title" style="margin-bottom: 0;">Danh sách dữ liệu</h2>
-            <!-- <div class="muted" style="margin-top: 4px;">
-                {% if fields %}
-                    Có {{ fields|length }} field.
-                {% else %}
-                    Chưa có field nào.
-                {% endif %}
-            </div> -->
         </div>
 
         <div class="records-toolbar__right">
@@ -39,8 +32,6 @@
                 <button type="button" class="btn btn-secondary" id="toggle-create-form-btn">+ Thêm dòng</button>
                 <button type="button" class="btn btn-primary" id="open-import-modal-btn">Import</button>
             {% endif %}
-
-            <!-- <a href="/categories/{{ item.id }}/fields" class="btn btn-secondary">Field</a> -->
 
             {% if item.scope == 'UNIT' %}
                 <a href="/categories/{{ item.id }}/datasets" class="btn btn-secondary">Quay lại</a>
@@ -63,7 +54,7 @@
                 <div class="grid">
                     {% for f in fields %}
                     <div class="col-6">
-                        <label>{{ f.ten_truong }} (<code>{{ f.ma_truong }}</code>)</label>
+                        <label><code>{{ f.ma_truong }}</code></label>
                         <input
                             type="text"
                             name="field_{{ f.id }}"
@@ -90,8 +81,7 @@
                             data-field-id="{{ f.id }}"
                             data-field-code="{{ f.ma_truong }}"
                         >
-                            {{ f.ten_truong }}<br>
-                            <small>{{ f.ma_truong }}</small>
+                            <code>{{ f.ma_truong }}</code>
                         </th>
                         {% endfor %}
                         <th style="width:320px;">Thao tác</th>
@@ -149,8 +139,7 @@
                             data-field-id="{{ f.id }}"
                             data-field-code="{{ f.ma_truong }}"
                         >
-                            {{ f.ten_truong }}<br>
-                            <small>{{ f.ma_truong }}</small>
+                            <code>{{ f.ma_truong }}</code>
                         </th>
                         {% endfor %}
                         <th style="width:320px;">Thao tác</th>
@@ -206,7 +195,7 @@
                     <input type="file" name="excel_file" accept=".xlsx,.xlsm,.xltx,.xltm">
 
                     <div class="muted" style="margin-top:8px;">
-                        Dòng đầu tiên phải là tên cột. Có thể dùng mã trường hoặc tên trường để map dữ liệu.
+                        Dòng đầu tiên phải là tên cột, và tên cột phải trùng với mã field.
                     </div>
 
                     <div class="actions" style="margin-top: 12px;">
@@ -234,6 +223,10 @@
   }
 ]'
                     ></textarea>
+
+                    <div class="muted" style="margin-top:8px;">
+                        Key JSON phải trùng với mã field.
+                    </div>
 
                     <div class="actions" style="margin-top: 12px;">
                         <button type="submit" class="btn btn-primary">Import JSON</button>
