@@ -41,7 +41,7 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:80px;">ID</th>
+                    <th style="width:80px;">STT</th>
                     <th>Tên danh mục</th>
                     <th style="width:160px;">Phạm vi</th>
                     <th style="width:180px;">Số field</th>
@@ -52,7 +52,7 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.id }}</td>
+                    <td>{{ loop.index }}</td>
                     <td>{{ item.ten_danh_muc }}</td>
                     <td>
                         {% if item.scope == 'UNIT' %}
@@ -69,7 +69,7 @@
                             <a class="btn btn-primary" href="/categories/{{ item.id }}/fields">Field</a>
 
                             {% if item.scope == 'UNIT' %}
-                                <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets">Bộ dữ liệu đơn vị</a>
+                                <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets">Dữ liệu</a>
                             {% else %}
                                 <a class="btn btn-primary" href="/categories/{{ item.id }}/records">Dữ liệu</a>
                             {% endif %}

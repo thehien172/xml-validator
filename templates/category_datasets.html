@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Bộ dữ liệu đơn vị{% endblock %}
+{% block title %}Dữ liệu theo đơn vị{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1 class="page-title">Bộ dữ liệu đơn vị: {{ item.ten_danh_muc }}</h1>
+    <h1 class="page-title">Dữ liệu theo đơn vị: {{ item.ten_danh_muc }}</h1>
     <div class="page-subtitle">
         Danh mục riêng chỉ chọn 1 lần trong rule detail. Khi validate, engine sẽ tự map đơn vị để lấy bộ dữ liệu tương ứng.
     </div>
@@ -16,7 +16,7 @@
 {% endif %}
 
 <div class="card">
-    <h2 class="card-title">Thêm bộ dữ liệu đơn vị</h2>
+    <h2 class="card-title">Thêm dữ liệu theo đơn vị</h2>
 
     <form method="POST">
         <input type="hidden" name="action" value="create">
@@ -54,7 +54,7 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:80px;">ID</th>
+                    <th style="width:80px;">STT</th>
                     <th>Đơn vị</th>
                     <th>Tên bộ dữ liệu</th>
                     <th style="width:240px;">Thao tác</th>
@@ -63,7 +63,7 @@
             <tbody>
                 {% for ds in datasets %}
                 <tr>
-                    <td>{{ ds.id }}</td>
+                    <td>{{ loop.index }}</td>
                     <td>{{ ds.don_vi.ten_don_vi if ds.don_vi else '-' }}</td>
                     <td>{{ ds.ten_bo_du_lieu }}</td>
                     <td>

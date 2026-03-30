@@ -19,8 +19,13 @@ class DonVi(db.Model):
     ten_don_vi = db.Column(db.String(255), nullable=False)
     he_thong_id = db.Column(db.Integer, db.ForeignKey("he_thong.id"), nullable=False)
 
+    # HIS
     api_username = db.Column(db.String(100))
     api_password = db.Column(db.String(100))
+
+    # ✅ BHYT (mới thêm)
+    bhyt_username = db.Column(db.String(100))
+    bhyt_password = db.Column(db.String(100))
 
     api_base_url = db.Column(db.String(255))
     api_uuid = db.Column(db.Text)

@@ -15,22 +15,35 @@
         <input type="text" name="ma_don_vi" required value="{{ item.ma_don_vi if item else '' }}" placeholder="62058">
 
         <label>Tên đơn vị</label>
-        <input type="text" name="ten_don_vi" required value="{{ item.ten_don_vi if item else '' }}" placeholder="BV YHCT - CS1">
+        <input type="text" name="ten_don_vi" required value="{{ item.ten_don_vi if item else '' }}"
+            placeholder="BV YHCT - CS1">
 
         <label>Hệ thống</label>
         <select name="he_thong_id" required>
             {% for s in systems %}
-            <option value="{{ s.id }}" {% if item and item.he_thong_id == s.id %}selected{% endif %}>
+            <option value="{{ s.id }}" {% if item and item.he_thong_id==s.id %}selected{% endif %}>
                 {{ s.ten_he_thong }}
             </option>
             {% endfor %}
         </select>
 
         <label>API Username</label>
-        <input type="text" name="api_username" value="{{ item.api_username if item else '' }}" placeholder="Tên đăng nhập API">
+        <input type="text" name="api_username" value="{{ item.api_username if item else '' }}"
+            placeholder="Tên đăng nhập API">
 
         <label>API Password</label>
-        <input type="text" name="api_password" value="{{ item.api_password if item else '' }}" placeholder="Mật khẩu API">
+        <input type="text" name="api_password" value="{{ item.api_password if item else '' }}"
+            placeholder="Mật khẩu API">
+
+        <h3 style="margin-top:20px;">Tài khoản cổng giám định BHYT</h3>
+
+        <label>Tài khoản BHYT</label>
+        <input type="text" name="bhyt_username" value="{{ item.bhyt_username if item else '' }}"
+            placeholder="Nhập tài khoản cổng giám định">
+
+        <label>Mật khẩu BHYT</label>
+        <input type="password" name="bhyt_password" value="{{ item.bhyt_password if item else '' }}"
+            placeholder="Nhập mật khẩu">
 
         <div class="actions">
             <button type="submit" class="btn btn-primary">Lưu</button>

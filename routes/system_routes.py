@@ -101,6 +101,8 @@ def create_unit():
             he_thong_id=int(request.form.get("he_thong_id")),
             api_username=request.form.get("api_username"),
             api_password=request.form.get("api_password"),
+            bhyt_username=request.form.get("bhyt_username"),
+            bhyt_password=request.form.get("bhyt_password"),
         )
         db.session.add(item)
         db.session.commit()
@@ -120,6 +122,8 @@ def edit_unit(item_id):
         item.he_thong_id = int(request.form.get("he_thong_id"))
         item.api_username = request.form.get("api_username")
         item.api_password = request.form.get("api_password")
+        item.bhyt_username = request.form.get("bhyt_username")
+        item.bhyt_password = request.form.get("bhyt_password")
         db.session.commit()
         return redirect(url_for("unit_bp.list_units"))
 
