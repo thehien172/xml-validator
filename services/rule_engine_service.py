@@ -26,6 +26,13 @@ from services.xml_parser_service import (
 
 CATEGORY_COMPARE_SKIP = "__CATEGORY_COMPARE_SKIP__"
 
+
+def diff_minutes(dt1, dt2):
+    if not dt1 or not dt2:
+        return None
+    return (dt1 - dt2).total_seconds() / 60.0
+
+
 def parse_date(value):
     if not value:
         return None
@@ -130,6 +137,74 @@ def is_between_value(actual_value, expected_value):
     return actual_num >= start_num or actual_num <= end_num
 
 
+def evaluate_datetime_diff_condition(actual_value_raw, compare_value_raw, condition_code, expected_value):
+    dt_a = parse_date(actual_value_raw)
+    dt_b = parse_date(compare_value_raw)
+
+    if not dt_a or not dt_b:
+        return True
+
+    diff = diff_minutes(dt_a, dt_b)
+    if diff is None:
+        return True
+
+    if condition_code == "DATETIME_NOT_GT_MINUTES":
+        offset_minutes = try_parse_number(expected_value)
+        if offset_minutes is None:
+            return True
+        return diff <= offset_minutes
+
+    if condition_code == "DATETIME_GT_MINUTES":
+        offset_minutes = try_parse_number(expected_value)
+        if offset_minutes is None:
+            return True
+        return diff >= offset_minutes
+
+    if condition_code == "DATETIME_BETWEEN_MINUTES":
+        start_raw, end_raw = split_range_value(expected_value)
+        start_num = try_parse_number(start_raw)
+        end_num = try_parse_number(end_raw)
+
+        if start_num is None or end_num is None:
+            return True
+
+        return start_num <= diff <= end_num
+
+    if condition_code == "DATETIME_NOT_BETWEEN_MINUTES":
+        start_raw, end_raw = split_range_value(expected_value)
+        start_num = try_parse_number(start_raw)
+        end_num = try_parse_number(end_raw)
+
+        if start_num is None or end_num is None:
+            return True
+
+        return not (start_num <= diff <= end_num)
+
+    return True
+
+
+def build_datetime_compare_text(detail):
+    compare_field_text = ""
+    if detail.compare_field:
+        compare_field_text = (
+            f"{detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
+        )
+
+    if detail.condition and detail.condition.ma_dieu_kien == "DATETIME_NOT_GT_MINUTES":
+        return f"Không được lớn hơn field {compare_field_text} quá {detail.gia_tri or 0} phút"
+
+    if detail.condition and detail.condition.ma_dieu_kien == "DATETIME_GT_MINUTES":
+        return f"Phải lớn hơn field {compare_field_text} ít nhất {detail.gia_tri or 0} phút"
+
+    if detail.condition and detail.condition.ma_dieu_kien == "DATETIME_BETWEEN_MINUTES":
+        return f"Chênh lệch với field {compare_field_text} phải nằm trong khoảng {detail.gia_tri}"
+    
+    if detail.condition and detail.condition.ma_dieu_kien == "DATETIME_NOT_BETWEEN_MINUTES":
+        return f"Chênh lệch với field {compare_field_text} KHÔNG được nằm trong khoảng {detail.gia_tri}"
+
+    return None
+
+
 def check_condition(actual_value, condition_code, expected_value=None):
     actual_value = normalize_value(actual_value)
 
@@ -213,6 +288,14 @@ def group_details_by_group_no(details):
 
 
 def build_compare_text(detail):
+    if detail.condition and detail.condition.ma_dieu_kien in (
+        "DATETIME_NOT_GT_MINUTES",
+        "DATETIME_GT_MINUTES",
+        "DATETIME_BETWEEN_MINUTES"
+    ):
+        if detail.compare_mode == "FIELD" and detail.compare_field:
+            return build_datetime_compare_text(detail)
+
     if detail.compare_mode == "FIELD" and detail.compare_field:
         return f"So sánh với field {detail.compare_field.xml.ma_xml}:{detail.compare_field.xml_path}"
 
@@ -236,6 +319,7 @@ def apply_date_part_if_needed(value, date_part):
     if date_part:
         return extract_date_part(value, date_part)
     return value
+
 
 def get_category_dataset(category, don_vi_id=None):
     if not category:
@@ -286,6 +370,7 @@ def ensure_common_dataset(category):
     db.session.flush()
     return dataset
 
+
 def get_category_expected_values(detail, don_vi_id=None):
     if detail.compare_mode != "CATEGORY":
         return CATEGORY_COMPARE_SKIP
@@ -334,6 +419,7 @@ def get_category_expected_values(detail, don_vi_id=None):
 
     return result
 
+
 def get_expected_value_for_detail(detail, xml_data_map, current_item, don_vi_id=None):
     if detail.compare_mode == "FIELD" and detail.compare_field:
         source_xml_code = detail.field.xml.ma_xml
@@ -363,9 +449,29 @@ def get_expected_value_for_detail(detail, xml_data_map, current_item, don_vi_id=
 
     return detail.gia_tri
 
+
 def evaluate_detail_on_item(detail, xml_data_map, item, don_vi_id=None):
-    actual_value = get_value_from_item(item, detail.field.xml_path)
-    actual_value = apply_date_part_if_needed(actual_value, detail.date_part)
+    actual_value_raw = get_value_from_item(item, detail.field.xml_path)
+
+    if detail.condition.ma_dieu_kien in (
+        "DATETIME_NOT_GT_MINUTES",
+        "DATETIME_GT_MINUTES",
+        "DATETIME_BETWEEN_MINUTES",
+        "DATETIME_NOT_BETWEEN_MINUTES"
+    ):
+        if detail.compare_mode != "FIELD" or not detail.compare_field:
+            return True
+
+        compare_value_raw = get_value_from_item(item, detail.compare_field.xml_path)
+
+        return evaluate_datetime_diff_condition(
+            actual_value_raw=actual_value_raw,
+            compare_value_raw=compare_value_raw,
+            condition_code=detail.condition.ma_dieu_kien,
+            expected_value=detail.gia_tri
+        )
+
+    actual_value = apply_date_part_if_needed(actual_value_raw, detail.date_part)
 
     expected_value = get_expected_value_for_detail(
         detail=detail,
@@ -490,8 +596,40 @@ def collect_occurrences_for_xml(contexts, xml_code):
 
 
 def evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ, don_vi_id=None):
-    actual_value = get_value_from_item(left_occ["item"], detail.field.xml_path)
-    actual_value = apply_date_part_if_needed(actual_value, detail.date_part)
+    actual_raw = get_value_from_item(left_occ["item"], detail.field.xml_path)
+
+    if detail.condition.ma_dieu_kien in (
+        "DATETIME_NOT_GT_MINUTES",
+        "DATETIME_GT_MINUTES",
+        "DATETIME_BETWEEN_MINUTES",
+        "DATETIME_NOT_BETWEEN_MINUTES"
+    ):
+        if detail.compare_mode != "FIELD" or not detail.compare_field:
+            return True, None
+
+        compare_raw = get_value_from_item(right_occ["item"], detail.compare_field.xml_path)
+
+        ok = evaluate_datetime_diff_condition(
+            actual_value_raw=actual_raw,
+            compare_value_raw=compare_raw,
+            condition_code=detail.condition.ma_dieu_kien,
+            expected_value=detail.gia_tri
+        )
+
+        if ok:
+            return True, None
+
+        return False, {
+            "field_name": detail.field.ten_truong,
+            "field_path": detail.field.xml_path,
+            "actual_value": actual_raw,
+            "compare_text": build_compare_text(detail),
+            "pair_left": left_occ["label"],
+            "pair_right": right_occ["label"],
+            "compare_value": detail.gia_tri
+        }
+
+    actual_value = apply_date_part_if_needed(actual_raw, detail.date_part)
 
     if detail.compare_mode == "FIELD" and detail.compare_field:
         expected_value = get_value_from_item(right_occ["item"], detail.compare_field.xml_path)
@@ -522,6 +660,7 @@ def evaluate_pairwise_detail_on_pair(detail, left_occ, right_occ, don_vi_id=None
         "pair_right": right_occ["label"],
         "compare_value": expected_value
     }
+
 
 def evaluate_pairwise_group_on_pair(detail_group, left_occ, right_occ, don_vi_id=None):
     failed_fields = []

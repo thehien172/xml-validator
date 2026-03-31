@@ -268,7 +268,7 @@ def manage_category_datasets(category_id):
                 .first()
             )
             if existed:
-                raise ValueError("Đơn vị này đã có bộ dữ liệu.")
+                raise ValueError("Đơn vị này đã có dữ liệu.")
 
             if not ten_bo_du_lieu:
                 ten_bo_du_lieu = f"Bộ dữ liệu - {unit.ten_don_vi}"

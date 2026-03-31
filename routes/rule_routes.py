@@ -585,7 +585,7 @@ def build_detail_row(rule_id, payload, condition_role, group_no, sort_order):
         if not compare_field:
             raise ValueError(f"{condition_role}: field so sánh không tồn tại.")
 
-        gia_tri = None
+        # gia_tri = None
         compare_category_id = None
         compare_category_field_id = None
 

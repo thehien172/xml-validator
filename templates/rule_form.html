@@ -61,7 +61,7 @@
             </div>
 
             <div class="col-4">
-                <label>Phạm vi chạy rule</label>
+                <label>Phạm vi so sánh</label>
                 {% set current_run_scope = item.run_scope if item and item.run_scope else 'ONE_HOSO' %}
                 <select name="run_scope">
                     <option value="ONE_HOSO" {% if current_run_scope == 'ONE_HOSO' %}selected{% endif %}>Trong từng hồ sơ</option>

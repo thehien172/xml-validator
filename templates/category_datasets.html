@@ -4,9 +4,9 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">Dữ liệu theo đơn vị: {{ item.ten_danh_muc }}</h1>
-    <div class="page-subtitle">
+    <!-- <div class="page-subtitle">
         Danh mục riêng chỉ chọn 1 lần trong rule detail. Khi validate, engine sẽ tự map đơn vị để lấy bộ dữ liệu tương ứng.
-    </div>
+    </div> -->
 </div>
 
 {% if error %}
@@ -32,14 +32,14 @@
                 </select>
             </div>
 
-            <div class="col-6">
+            <!-- <div class="col-6">
                 <label>Tên bộ dữ liệu</label>
                 <input type="text" name="ten_bo_du_lieu" placeholder="Ví dụ: Bộ dữ liệu mã bác sĩ BV A">
-            </div>
+            </div> -->
         </div>
 
         <div class="actions">
-            <button type="submit" class="btn btn-primary">+ Thêm bộ dữ liệu</button>
+            <button type="submit" class="btn btn-primary">+ Thêm mới</button>
             <a href="/categories/{{ item.id }}/fields" class="btn btn-secondary">Field</a>
             <a href="/categories" class="btn btn-secondary">Quay lại</a>
         </div>
@@ -47,7 +47,7 @@
 </div>
 
 <div class="card">
-    <h2 class="card-title">Danh sách bộ dữ liệu</h2>
+    <h2 class="card-title">Danh sách dữ liệu theo đơn vị</h2>
 
     {% if datasets %}
     <div class="table-wrap">
@@ -56,7 +56,7 @@
                 <tr>
                     <th style="width:80px;">STT</th>
                     <th>Đơn vị</th>
-                    <th>Tên bộ dữ liệu</th>
+                    <!-- <th>Tên bộ dữ liệu</th> -->
                     <th style="width:240px;">Thao tác</th>
                 </tr>
             </thead>
@@ -65,11 +65,11 @@
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>{{ ds.don_vi.ten_don_vi if ds.don_vi else '-' }}</td>
-                    <td>{{ ds.ten_bo_du_lieu }}</td>
+                    <!-- <td>{{ ds.ten_bo_du_lieu }}</td> -->
                     <td>
                         <div class="actions actions-center">
-                            <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets/{{ ds.id }}/records">Dữ liệu</a>
-                            <form class="inline" method="POST" action="/categories/{{ item.id }}/datasets/{{ ds.id }}/delete" onsubmit="return confirm('Xóa bộ dữ liệu này?');">
+                            <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets/{{ ds.id }}/records">Xem dữ liệu</a>
+                            <form class="inline" method="POST" action="/categories/{{ item.id }}/datasets/{{ ds.id }}/delete" onsubmit="return confirm('Xóa dữ liệu đơn vị này?');">
                                 <button class="btn btn-danger" type="submit">Xóa</button>
                             </form>
                         </div>
@@ -80,7 +80,7 @@
         </table>
     </div>
     {% else %}
-    <div class="empty-state">Chưa có bộ dữ liệu đơn vị nào.</div>
+    <div class="empty-state">Chưa có dữ liệu theo đơn vị nào.</div>
     {% endif %}
 </div>
 {% endblock %}

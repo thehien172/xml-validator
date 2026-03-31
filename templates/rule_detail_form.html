@@ -5,15 +5,15 @@
 <div class="page-header">
     <h1 class="page-title">
         {% if item %}
-            Sửa nhóm {{ role }}
+        Sửa nhóm {{ role }}
         {% else %}
-            Tạo {{ role }}
+        Tạo {{ role }}
         {% endif %}
     </h1>
     <div class="page-subtitle">
         Rule: {{ rule.ten_rule }}
         {% if group_no %}
-            | Nhóm logic {{ group_no }}
+        | Nhóm logic {{ group_no }}
         {% endif %}
     </div>
 </div>
@@ -25,12 +25,13 @@
     </div>
     {% endif %}
 
-    <div style="margin-bottom: 18px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+    <div
+        style="margin-bottom: 18px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
         <div style="font-weight: 700; margin-bottom: 6px;">
             {% if role == 'TRIGGER' %}
-                Nhóm Trigger
+            Nhóm Trigger
             {% else %}
-                Nhóm Validate
+            Nhóm Validate
             {% endif %}
         </div>
         <div style="font-size: 14px; color: #374151;">
@@ -38,9 +39,9 @@
         </div>
         <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
             {% if role == 'TRIGGER' %}
-                Giữa các nhóm trigger khác nhau là OR.
+            Giữa các nhóm trigger khác nhau là OR.
             {% else %}
-                Giữa các nhóm validate khác nhau là OR.
+            Giữa các nhóm validate khác nhau là OR.
             {% endif %}
         </div>
     </div>
@@ -51,7 +52,8 @@
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
             <div>
                 <div style="font-weight:700;">
-                    {% if role == 'TRIGGER' %}Danh sách trigger trong nhóm{% else %}Danh sách validate trong nhóm{% endif %}
+                    {% if role == 'TRIGGER' %}Danh sách trigger trong nhóm{% else %}Danh sách validate trong nhóm{%
+                    endif %}
                 </div>
             </div>
             <button type="button" class="btn btn-primary" id="btn_add_condition">+ Thêm điều kiện AND</button>
@@ -68,7 +70,8 @@
     </form>
 
     <template id="condition-card-template">
-        <div class="condition-card" style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; margin-bottom:12px; background:#fff;">
+        <div class="condition-card"
+            style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; margin-bottom:12px; background:#fff;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
                 <div class="condition-title" style="font-weight:700;">Điều kiện</div>
                 <button type="button" class="btn btn-danger btn-remove-condition">Xóa</button>
@@ -97,16 +100,6 @@
 
             <div class="grid">
                 <div class="col-6">
-                    <label>Condition</label>
-                    <select class="input-condition">
-                        <option value="">-- Chọn điều kiện --</option>
-                        {% for c in conditions %}
-                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} - {{ c.ten_dieu_kien }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="col-6">
                     <label>Kiểu so sánh</label>
                     <select class="input-compare-mode">
                         <option value="VALUE">So sánh với giá trị cố định</option>
@@ -114,12 +107,22 @@
                         <option value="CATEGORY">So sánh với danh mục</option>
                     </select>
                 </div>
+                <div class="col-6">
+                    <label>Condition</label>
+                    <select class="input-condition">
+                        <option value="">-- Chọn điều kiện --</option>
+                        {% for c in conditions %}
+                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} - {{
+                            c.ten_dieu_kien }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
             <div class="value-mode-box">
                 <div class="grid">
                     <div class="col-12">
-                        <label>Giá trị so sánh</label>
+                        <label class="value-label">Giá trị so sánh</label>
                         <input type="text" class="input-gia-tri" placeholder="Ví dụ: 7,8 hoặc 18-06">
                         <div class="hint-value" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
                     </div>
@@ -147,6 +150,18 @@
                         </select>
                     </div>
                 </div>
+
+                <div class="field-extra-value-box" style="display:none; margin-top:12px;">
+                    <div class="grid">
+                        <div class="col-12">
+                            <label class="field-extra-value-label">Số phút cho phép</label>
+                            <input type="text" class="input-gia-tri-field-mode" placeholder="Ví dụ: 15">
+                            <div class="hint-field-extra-value" style="margin-top:6px; font-size:12px; color:#6b7280;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="hint-field-compare" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
             </div>
 
@@ -165,9 +180,6 @@
                             <option value="">-- Chọn field danh mục --</option>
                         </select>
                     </div>
-                </div>
-                <div class="hint-category-compare" style="margin-top:6px; font-size:12px; color:#6b7280;">
-                    Chỉ chọn danh mục cha. Nếu là danh mục riêng, engine sẽ tự map đơn vị đang chạy validate để lấy đúng bộ dữ liệu đơn vị.
                 </div>
             </div>
 
@@ -189,9 +201,10 @@
     </template>
 
     <script>
-    (function () {
-        const role = {{ role|tojson }};
-        const initialPayload = {{ initial_payload|safe }};
+        (function () {
+            const role = {{ role| tojson
+        }};
+        const initialPayload = {{ initial_payload| safe }};
         const conditionsContainer = document.getElementById("conditions_container");
         const template = document.getElementById("condition-card-template");
         const form = document.getElementById("group-rule-detail-form");
@@ -200,14 +213,88 @@
 
         let conditionCounter = 0;
         let cachedCategories = null;
+        const CONDITION_GROUPS = {
+            COMMON: ["IS_NULL", "NOT_NULL"],
 
+            TEXT: [
+                "EQUAL", "NOT_EQUAL",
+                "CONTAINS", "NOT_CONTAINS",
+                "IN_LIST", "NOT_IN_LIST"
+            ],
+
+            NUMBER: [
+                "EQUAL", "NOT_EQUAL",
+                "BETWEEN", "NOT_BETWEEN"
+            ],
+
+            DATE_BASIC: [
+                "EQUAL", "NOT_EQUAL",
+                "BETWEEN", "NOT_BETWEEN"
+            ],
+
+            DATE_DIFF: [
+                "DATETIME_NOT_GT_MINUTES",
+                "DATETIME_GT_MINUTES",
+                "DATETIME_BETWEEN_MINUTES",
+                "DATETIME_NOT_BETWEEN_MINUTES"
+            ]
+        };
+        function getFieldType(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            return opt ? (opt.dataset.type || "STRING").toUpperCase() : "STRING";
+        }
         function getConditionCode(selectEl) {
             const opt = selectEl.options[selectEl.selectedIndex];
             return opt ? (opt.dataset.code || "").trim().toUpperCase() : "";
         }
+        function filterConditionOptions(conditionSelect, fieldType, compareMode) {
+            let allowed = [...CONDITION_GROUPS.COMMON];
+
+            if (fieldType === "STRING") {
+                allowed = allowed.concat(CONDITION_GROUPS.TEXT);
+            }
+
+            if (fieldType === "NUMBER") {
+                allowed = allowed.concat(CONDITION_GROUPS.NUMBER);
+            }
+
+            if (fieldType === "DATE") {
+                allowed = allowed.concat(CONDITION_GROUPS.DATE_BASIC);
+
+                if (compareMode === "FIELD") {
+                    allowed = allowed.concat(CONDITION_GROUPS.DATE_DIFF);
+                }
+            }
+
+            Array.from(conditionSelect.options).forEach(opt => {
+                if (!opt.value) return;
+
+                const code = (opt.dataset.code || "").toUpperCase();
+
+                if (allowed.includes(code)) {
+                    opt.style.display = "block";
+                } else {
+                    opt.style.display = "none";
+                }
+            });
+
+            const currentCode = getConditionCode(conditionSelect);
+            if (!allowed.includes(currentCode)) {
+                conditionSelect.value = "";
+            }
+        }
 
         function isRangeCondition(code) {
             return code === "BETWEEN" || code === "NOT_BETWEEN";
+        }
+
+        function isFieldMinutesOffsetCondition(code) {
+            return [
+                "DATETIME_NOT_GT_MINUTES",
+                "DATETIME_GT_MINUTES",
+                "DATETIME_BETWEEN_MINUTES",
+                "DATETIME_NOT_BETWEEN_MINUTES"
+            ].includes(code);
         }
 
         function getSelectedItemType(selectEl) {
@@ -328,6 +415,10 @@
             const valueModeBox = node.querySelector(".value-mode-box");
             const fieldModeBox = node.querySelector(".field-mode-box");
             const categoryModeBox = node.querySelector(".category-mode-box");
+            const fieldExtraValueBox = node.querySelector(".field-extra-value-box");
+            const fieldExtraValueInput = node.querySelector(".input-gia-tri-field-mode");
+            const fieldExtraValueLabel = node.querySelector(".field-extra-value-label");
+            const hintFieldExtraValue = node.querySelector(".hint-field-extra-value");
             const hintValue = node.querySelector(".hint-value");
             const hintDatePart = node.querySelector(".hint-date-part");
             const hintFieldCompare = node.querySelector(".hint-field-compare");
@@ -335,21 +426,47 @@
 
             titleEl.textContent = role + ' ' + conditionCounter;
 
+            function updateConditionByContext() {
+                const fieldType = getFieldType(fieldSelect);
+                const compareMode = compareModeSelect.value || "VALUE";
+
+                filterConditionOptions(conditionSelect, fieldType, compareMode);
+            }
+            function syncFieldModeValueToMainInput() {
+                giaTriInput.value = fieldExtraValueInput.value || "";
+            }
+
+            function syncMainInputToFieldModeValue() {
+                fieldExtraValueInput.value = giaTriInput.value || "";
+            }
+
             function updateCompareMode() {
                 const mode = compareModeSelect.value || "VALUE";
+                const conditionCode = getConditionCode(conditionSelect);
+                const needFieldExtraValue = mode === "FIELD" && isFieldMinutesOffsetCondition(conditionCode);
 
                 valueModeBox.style.display = "none";
                 fieldModeBox.style.display = "none";
                 categoryModeBox.style.display = "none";
+                fieldExtraValueBox.style.display = "none";
 
                 if (mode === "FIELD") {
                     fieldModeBox.style.display = "block";
-                    giaTriInput.value = "";
+
+                    if (needFieldExtraValue) {
+                        fieldExtraValueBox.style.display = "block";
+                        syncMainInputToFieldModeValue();
+                    } else {
+                        giaTriInput.value = "";
+                        fieldExtraValueInput.value = "";
+                    }
+
                     compareCategorySelect.value = "";
                     compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
                 } else if (mode === "CATEGORY") {
                     categoryModeBox.style.display = "block";
                     giaTriInput.value = "";
+                    fieldExtraValueInput.value = "";
                     compareXmlSelect.value = "";
                     compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
                 } else {
@@ -359,76 +476,31 @@
                     compareCategorySelect.value = "";
                     compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
                 }
-
-                updateHints();
             }
 
-            function updateHints() {
-                const conditionCode = getConditionCode(conditionSelect);
-                const datePart = (datePartSelect.value || "").toUpperCase();
-                const sourceItemType = getSelectedItemType(xmlSelect);
-                const compareItemType = getSelectedItemType(compareXmlSelect);
-
-                hintValue.textContent = "";
-                hintDatePart.textContent = "";
-                hintFieldCompare.textContent = "";
-
-                if (compareModeSelect.value === "VALUE") {
-                    if (conditionCode === "IN_LIST" || conditionCode === "NOT_IN_LIST") {
-                        hintValue.textContent = "Nhập nhiều giá trị cách nhau dấu phẩy. Ví dụ: 7,8";
-                    } else if (isRangeCondition(conditionCode)) {
-                        hintValue.textContent = "Nhập khoảng dạng start-end. Ví dụ: 18-06 hoặc 07-17";
-                    } else if (conditionCode === "IS_NULL" || conditionCode === "NOT_NULL") {
-                        hintValue.textContent = "Điều kiện này không cần nhập giá trị.";
-                    } else {
-                        hintValue.textContent = "Nhập 1 giá trị so sánh.";
-                    }
-                }
-
-                if (compareModeSelect.value === "FIELD") {
-                    if (sourceItemType === "MULTI" && compareItemType === "MULTI") {
-                        hintFieldCompare.textContent = "Nếu chọn cùng field trên XML MULTI, engine sẽ so từng cặp item và loại trừ chính nó.";
-                    } else if (sourceItemType === "SINGLE" && compareItemType === "MULTI") {
-                        hintFieldCompare.textContent = "Field đơn sẽ được so với toàn bộ item của XML MULTI.";
-                    } else if (sourceItemType === "MULTI" && compareItemType === "SINGLE") {
-                        hintFieldCompare.textContent = "Từng item của XML MULTI sẽ được so với field đơn.";
-                    } else {
-                        hintFieldCompare.textContent = "So sánh field với field theo logic hiện tại.";
-                    }
-                }
-
-                if (datePart === "DAY_OF_WEEK") {
-                    hintDatePart.textContent = "Quy ước: Thứ 2=2 ... Thứ 7=7, Chủ nhật=8.";
-                    if (!giaTriInput.value.trim() && conditionCode === "IN_LIST") {
-                        giaTriInput.placeholder = "Ví dụ: 7,8";
-                    }
-                } else if (datePart === "HOUR") {
-                    hintDatePart.textContent = "Giờ từ 0-23. Có thể nhập BETWEEN 18-06.";
-                    if (!giaTriInput.value.trim() && isRangeCondition(conditionCode)) {
-                        giaTriInput.placeholder = "Ví dụ: 18-06";
-                    }
-                } else {
-                    giaTriInput.placeholder = "Ví dụ: 7,8 hoặc 18-06";
-                }
-            }
-
-            xmlSelect.addEventListener("change", function () {
-                loadFieldsByXml(this.value, fieldSelect, "");
-                updateHints();
+            xmlSelect.addEventListener("change", async function () {
+                await loadFieldsByXml(this.value, fieldSelect, "");
+                updateConditionByContext();
             });
 
             compareXmlSelect.addEventListener("change", function () {
                 loadFieldsByXml(this.value, compareFieldSelect, "");
-                updateHints();
             });
 
             compareCategorySelect.addEventListener("change", function () {
                 loadCategoryFields(this.value, compareCategoryFieldSelect, "");
             });
 
-            compareModeSelect.addEventListener("change", updateCompareMode);
-            conditionSelect.addEventListener("change", updateHints);
-            datePartSelect.addEventListener("change", updateHints);
+            compareModeSelect.addEventListener("change", function () {
+                updateCompareMode();
+                updateConditionByContext();
+            });
+
+            conditionSelect.addEventListener("change", function () {
+                updateCompareMode();
+            });
+            fieldSelect.addEventListener("change", updateConditionByContext);
+            fieldExtraValueInput.addEventListener("input", syncFieldModeValueToMainInput);
 
             removeBtn.addEventListener("click", function () {
                 node.remove();
@@ -436,6 +508,8 @@
             });
 
             node.getPayload = function () {
+                syncFieldModeValueToMainInput();
+
                 return {
                     xml_id: xmlSelect.value || "",
                     field_id: fieldSelect.value || "",
@@ -462,21 +536,19 @@
                 await loadCategories(compareCategorySelect, data.compare_category_id || "");
                 updateCompareMode();
 
+                giaTriInput.value = data.gia_tri || "";
+                fieldExtraValueInput.value = data.gia_tri || "";
+
                 if ((data.compare_mode || "VALUE") === "FIELD") {
                     compareXmlSelect.value = data.compare_xml_id || "";
                     await loadFieldsByXml(data.compare_xml_id || "", compareFieldSelect, data.compare_field_id || "");
                 } else if ((data.compare_mode || "VALUE") === "CATEGORY") {
                     await loadCategoryFields(data.compare_category_id || "", compareCategoryFieldSelect, data.compare_category_field_id || "");
-                } else {
-                    giaTriInput.value = data.gia_tri || "";
                 }
 
                 datePartSelect.value = data.date_part || "";
-                if ((data.compare_mode || "VALUE") === "VALUE") {
-                    giaTriInput.value = data.gia_tri || "";
-                }
-
-                updateHints();
+                updateCompareMode();
+                updateConditionByContext();
             }
 
             conditionsContainer.appendChild(node);
@@ -504,6 +576,9 @@
 
             for (let i = 0; i < cards.length; i++) {
                 const row = cards[i].getPayload();
+                const cardEl = cards[i];
+                const conditionSelect = cardEl.querySelector(".input-condition");
+                const conditionCode = getConditionCode(conditionSelect);
 
                 if (!row.field_id) {
                     e.preventDefault();
@@ -535,6 +610,20 @@
                     return;
                 }
 
+                if (row.compare_mode === "FIELD" && isFieldMinutesOffsetCondition(conditionCode)) {
+                    if (!String(row.gia_tri || "").trim()) {
+                        e.preventDefault();
+                        alert("Điều kiện DATETIME_NOT_GT_MINUTES phải nhập số phút cho phép.");
+                        return;
+                    }
+
+                    if (isNaN(Number(row.gia_tri))) {
+                        e.preventDefault();
+                        alert("Số phút cho phép phải là số.");
+                        return;
+                    }
+                }
+
                 payload.conditions.push(row);
             }
 
@@ -548,7 +637,7 @@
         } else {
             createConditionCard({ compare_mode: "VALUE" });
         }
-    })();
+    }) ();
     </script>
 </div>
 {% endblock %}

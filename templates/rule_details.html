@@ -74,7 +74,9 @@
 
 {% macro render_compare_value(d) %}
     {% if d.compare_mode == 'FIELD' and d.compare_field %}
-        {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} | {{ d.compare_field.xml_path }}
+        {{ d.compare_field.xml.ma_xml }} | {{ d.compare_field.ten_truong }} 
+        {% if d.condition and d.condition.ma_dieu_kien == 'DATETIME_NOT_GT_MINUTES' and d.gia_tri %}
+        {% endif %}
     {% elif d.compare_mode == 'CATEGORY' and d.compare_category and d.compare_category_field %}
         {{ d.compare_category.ten_danh_muc }}
         {% if d.compare_category.scope == 'UNIT' %}
@@ -82,7 +84,7 @@
         {% else %}
             [Dùng chung]
         {% endif %}
-        | {{ d.compare_category_field.ma_truong }} | {{ d.compare_category_field.ten_truong }}
+        | {{ d.compare_category_field.ma_truong }}
     {% else %}
         {{ d.gia_tri or '' }}
     {% endif %}
