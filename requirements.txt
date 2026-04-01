@@ -3,3 +3,4 @@ Flask-SQLAlchemy==3.1.1
 Flask-Migrate
 requests==2.32.3
 lxml==5.3.0
+openpyxl==3.1.2
