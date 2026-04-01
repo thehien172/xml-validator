@@ -1,8 +1,6 @@
 import re
 import requests
 
-from urllib.parse import urlsplit, urlunsplit
-
 from models import db
 
 
@@ -138,90 +136,72 @@ def login_bhyt(unit, captcha_value):
     }
 
 
-def normalize_sync_export_url(api_sync_url):
-    """
-    Chuẩn hóa URL export:
-    - Nếu truyền vào .../ExportExcelStream -> đổi thành .../ExportExcel
-    - Nếu đã là .../ExportExcel -> giữ nguyên
-    """
-    if not api_sync_url:
-        return api_sync_url
-
-    url = api_sync_url.strip().rstrip("/")
-
-    if url.endswith("ExportExcelStream"):
-        return url[:-6]  # bỏ chữ "Stream"
-
-    return url
+def _clean_url(url):
+    return (url or "").strip() or None
 
 
-def build_sync_parent_url(api_sync_url):
-    export_url = normalize_sync_export_url(api_sync_url)
-    parsed = urlsplit(export_url)
+def validate_sync_config(api_config):
+    if not _clean_url(getattr(api_config, "api_danh_muc_url", None)):
+        raise ValueError("Danh mục chưa cấu hình API danh mục.")
 
-    path = (parsed.path or "").rstrip("/")
-    segments = [seg for seg in path.split("/") if seg]
+    if not _clean_url(getattr(api_config, "api_tong_hop_url", None)):
+        raise ValueError("Danh mục chưa cấu hình API tổng hợp Excel.")
 
-    if segments:
-        last_seg = segments[-1].lower()
-        if last_seg in ["exportexcel", "exportexcelstream"]:
-            segments = segments[:-1]
-
-    parent_path = "/" + "/".join(segments) if segments else "/"
-
-    return urlunsplit((
-        parsed.scheme,
-        parsed.netloc,
-        parent_path,
-        "",
-        ""
-    ))
+    if not _clean_url(getattr(api_config, "api_xuat_file_url", None)):
+        raise ValueError("Danh mục chưa cấu hình API xuất file.")
 
 
-def build_sync_stream_url(api_sync_url):
-    export_url = normalize_sync_export_url(api_sync_url)
-    return export_url.rstrip("/") + "Stream"
-
-
-def warmup_sync_parent(unit, parent_url):
+def warmup_sync_category(unit, api_danh_muc_url):
     resp = requests.get(
-        parent_url,
+        _clean_url(api_danh_muc_url),
         headers=build_bhyt_headers(unit),
         timeout=60,
         allow_redirects=True
     )
 
+    update_unit_cookie_from_response(unit, resp)
+    db.session.commit()
     return resp
 
-def warmup_sync_ft_timkiem(unit, parent_url, api_ft_timkiem_body):
-    url = parent_url.rstrip("/") + "/ft_TimKiem"
+
+def call_sync_search(unit, api_tim_kiem_url, api_tim_kiem_body=None):
+    api_tim_kiem_url = _clean_url(api_tim_kiem_url)
+    if not api_tim_kiem_url:
+        return None
 
     resp = requests.post(
-        url,
-        headers=build_bhyt_headers(unit, {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}),
-        data=api_ft_timkiem_body,
+        api_tim_kiem_url,
+        headers=build_bhyt_headers(
+            unit,
+            {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        ),
+        data=(api_tim_kiem_body or ""),
         timeout=60,
         allow_redirects=True
     )
 
+    update_unit_cookie_from_response(unit, resp)
+    db.session.commit()
     return resp
 
+
 def post_sync_export(unit, api_config):
-    api_ft_timkiem_body = api_config.api_ft_timkiem_body
-    api_sync_url = api_config.api_sync_url
-    
-    if not api_sync_url:
-        raise ValueError("Danh mục chưa cấu hình API đồng bộ.")
+    validate_sync_config(api_config)
 
-    export_url = normalize_sync_export_url(api_sync_url)
-    parent_url = build_sync_parent_url(api_sync_url)
-    warmup_sync_parent(unit, parent_url)
+    warmup_sync_category(unit, api_config.api_danh_muc_url)
 
-    if api_ft_timkiem_body:
-        warmup_sync_ft_timkiem(unit, parent_url, api_ft_timkiem_body)
+    if _clean_url(getattr(api_config, "api_tim_kiem_url", None)):
+        call_sync_search(
+            unit,
+            api_config.api_tim_kiem_url,
+            getattr(api_config, "api_tim_kiem_body", None)
+        )
 
     resp = requests.post(
-        export_url,
+        _clean_url(api_config.api_tong_hop_url),
         headers=build_bhyt_headers(
             unit,
             {
@@ -231,10 +211,13 @@ def post_sync_export(unit, api_config):
         timeout=60
     )
 
+    update_unit_cookie_from_response(unit, resp)
+    db.session.commit()
+
     try:
         data = resp.json()
     except Exception:
-        raise ValueError(f"API đồng bộ POST không trả JSON hợp lệ. Nội dung: {resp.text[:500]}")
+        raise ValueError(f"API tổng hợp Excel không trả JSON hợp lệ. Nội dung: {resp.text[:500]}")
 
     return {
         "response": resp,
@@ -242,14 +225,13 @@ def post_sync_export(unit, api_config):
     }
 
 
-def get_sync_stream(unit, api_sync_url):
-    if not api_sync_url:
-        raise ValueError("Danh mục chưa cấu hình API đồng bộ.")
-
-    stream_url = build_sync_stream_url(api_sync_url)
+def get_sync_stream(unit, api_xuat_file_url):
+    api_xuat_file_url = _clean_url(api_xuat_file_url)
+    if not api_xuat_file_url:
+        raise ValueError("Danh mục chưa cấu hình API xuất file.")
 
     resp = requests.get(
-        stream_url,
+        api_xuat_file_url,
         headers=build_bhyt_headers(unit),
         timeout=120
     )
@@ -258,7 +240,7 @@ def get_sync_stream(unit, api_sync_url):
     db.session.commit()
 
     if resp.status_code != 200:
-        raise ValueError(f"Tải file stream thất bại. HTTP {resp.status_code}")
+        raise ValueError(f"Tải file xuất thất bại. HTTP {resp.status_code}")
 
     return resp.content
 

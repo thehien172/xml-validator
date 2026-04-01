@@ -377,7 +377,7 @@
                 data.forEach(function (f) {
                     const opt = document.createElement("option");
                     opt.value = f.id;
-                    opt.textContent = f.ma_truong + ' | ' + f.ten_truong;
+                    opt.textContent = f.ma_truong;
                     if (String(selectedValue || "") === String(f.id)) {
                         opt.selected = true;
                     }

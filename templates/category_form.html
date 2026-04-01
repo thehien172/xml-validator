@@ -3,8 +3,21 @@
 
 {% block content %}
 <style>
-    .grid-block{
+    .grid-block {
         display: block;
+    }
+
+    .sync-config-card {
+        margin-top: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .sync-config-title {
+        margin: 0 0 10px 0;
+        font-size: 16px;
     }
 </style>
 <div class="page-header">
@@ -28,32 +41,80 @@
             <div class="col-6">
                 <label>Phạm vi</label>
                 <select name="scope" id="scope">
-                    <option value="COMMON" {% if item and item.scope=='COMMON' %}selected{% endif %}>Danh mục chung
-                    </option>
-                    <option value="UNIT" {% if item and item.scope=='UNIT' %}selected{% endif %}>Danh mục riêng</option>
+                    <option value="COMMON" {% if item and item.scope == 'COMMON' %}selected{% endif %}>Danh mục chung</option>
+                    <option value="UNIT" {% if item and item.scope == 'UNIT' %}selected{% endif %}>Danh mục riêng</option>
                 </select>
             </div>
         </div>
 
-        <div class="grid grid-block" id="sync-api-row"
-            style="margin-top: 8px; {% if not item or item.scope != 'UNIT' %}display:none;{% endif %}">
+        <div class="grid" id="sync-source-unit-row" style="margin-top: 8px; {% if item and item.scope == 'UNIT' %}display:none;{% endif %}">
             <div class="col-12">
-                <label>API đồng bộ</label>
-                <input type="text" name="api_sync_url" value="{{ item.api_sync_url if item else '' }}">
+                <label>Đơn vị gốc để đồng bộ (áp dụng cho danh mục chung)</label>
+                <select name="sync_don_vi_id" id="sync_don_vi_id">
+                    <option value="">-- Chưa chọn --</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}" {% if item and item.sync_don_vi_id == unit.id %}selected{% endif %}>
+                        {{ unit.ten_don_vi }}{% if unit.ma_don_vi %} ({{ unit.ma_don_vi }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="muted" style="margin-top: 6px;">
+                    Danh mục chung sẽ dùng cookie/tài khoản của đơn vị này để gọi các API đồng bộ.
+                </div>
             </div>
         </div>
-        <div class="grid grid-block" id="sync-api-row"
-            style="margin-top: 8px; {% if not item or item.scope != 'UNIT' %}display:none;{% endif %}">
-            <div class="col-12">
-                <label>Body API ft_timkiem</label>
-                <input type="text" name="api_ft_timkiem_body" value="{{ item.api_ft_timkiem_body if item else '' }}">
+
+        <div class="sync-config-card">
+            <h3 class="sync-config-title">Cấu hình luồng đồng bộ</h3>
+
+            <div class="grid grid-block" style="margin-top: 8px;">
+                <div class="col-12">
+                    <label>API danh mục</label>
+                    <input type="text" name="api_danh_muc_url" value="{{ item.api_danh_muc_url if item else '' }}"
+                        placeholder="Ví dụ: https://gdbhyt.baohiemxahoi.gov.vn/DM_VITHUOCYHCT">
+                </div>
+            </div>
+
+            <div class="grid grid-block" style="margin-top: 8px;">
+                <div class="col-12">
+                    <label>API tìm kiếm</label>
+                    <input type="text" name="api_tim_kiem_url" value="{{ item.api_tim_kiem_url if item else '' }}"
+                        placeholder="Ví dụ: https://gdbhyt.baohiemxahoi.gov.vn/DM_VITHUOCYHCT/ft_TimKiem">
+                </div>
+            </div>
+
+            <div class="grid grid-block" style="margin-top: 8px;">
+                <div class="col-12">
+                    <label>Body API tìm kiếm</label>
+                    <textarea name="api_tim_kiem_body" rows="4"
+                        placeholder="Ví dụ: page=1&take=9999">{{ item.api_tim_kiem_body if item else '' }}</textarea>
+                    <div class="muted" style="margin-top: 6px;">
+                        Chỉ gọi API tìm kiếm khi có cấu hình URL. Body có thể để trống nếu API không cần tham số.
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-block" style="margin-top: 8px;">
+                <div class="col-12">
+                    <label>API tổng hợp Excel</label>
+                    <input type="text" name="api_tong_hop_url" value="{{ item.api_tong_hop_url if item else '' }}"
+                        placeholder="Ví dụ: https://gdbhyt.baohiemxahoi.gov.vn/DM_VITHUOCYHCT/ExportExcel">
+                </div>
+            </div>
+
+            <div class="grid grid-block" style="margin-top: 8px;">
+                <div class="col-12">
+                    <label>API xuất file</label>
+                    <input type="text" name="api_xuat_file_url" value="{{ item.api_xuat_file_url if item else '' }}"
+                        placeholder="Ví dụ: https://gdbhyt.baohiemxahoi.gov.vn/DM_VITHUOCYHCT/ExportExcelStream">
+                </div>
             </div>
         </div>
 
         <div class="card-subtitle" style="margin-top: 10px;">
             <strong>Giải thích:</strong><br>
-            - Danh mục chung: dữ liệu dùng chung cho tất cả đơn vị.<br>
-            - Danh mục riêng: chỉ khai báo danh mục cha, dữ liệu sẽ nhập ở bước "Bộ dữ liệu đơn vị".
+            - Danh mục chung: dữ liệu dùng chung cho tất cả đơn vị, nhưng nếu cần đồng bộ thì phải chọn 1 đơn vị gốc để dùng tài khoản/cookie.<br>
+            - Danh mục riêng: chỉ khai báo danh mục cha, dữ liệu sẽ nhập ở bước "Bộ dữ liệu đơn vị" và khi đồng bộ sẽ dùng chính đơn vị của bộ dữ liệu đó.
         </div>
 
         <div class="actions">
@@ -66,16 +127,16 @@
 <script>
     (function () {
         var scopeEl = document.getElementById('scope');
-        var syncApiRow = document.getElementById('sync-api-row');
+        var syncSourceUnitRow = document.getElementById('sync-source-unit-row');
 
-        function updateSyncApiVisibility() {
-            if (!scopeEl || !syncApiRow) return;
-            syncApiRow.style.display = scopeEl.value === 'UNIT' ? '' : 'none';
+        function updateVisibility() {
+            if (!scopeEl || !syncSourceUnitRow) return;
+            syncSourceUnitRow.style.display = scopeEl.value === 'COMMON' ? '' : 'none';
         }
 
         if (scopeEl) {
-            scopeEl.addEventListener('change', updateSyncApiVisibility);
-            updateSyncApiVisibility();
+            scopeEl.addEventListener('change', updateVisibility);
+            updateVisibility();
         }
     })();
 </script>

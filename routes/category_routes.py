@@ -3,7 +3,8 @@ import json
 
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 from openpyxl import load_workbook
-from sqlalchemy import or_
+from sqlalchemy import or_, func
+from urllib.parse import urlencode
 
 from models import (
     db,
@@ -22,6 +23,7 @@ from services.bhyt_service import (
     post_sync_export,
     get_sync_stream,
     clear_dataset_records,
+    validate_sync_config,
 )
 
 category_bp = Blueprint("category_bp", __name__, url_prefix="/categories")
@@ -67,8 +69,12 @@ def create_category():
         try:
             ten_danh_muc = (request.form.get("ten_danh_muc") or "").strip()
             scope = (request.form.get("scope") or "COMMON").strip().upper()
-            api_sync_url = (request.form.get("api_sync_url") or "").strip()
-            api_ft_timkiem_body = (request.form.get("api_ft_timkiem_body") or "").strip()
+            sync_don_vi_id = to_int_or_none(request.form.get("sync_don_vi_id"))
+            api_danh_muc_url = (request.form.get("api_danh_muc_url") or "").strip()
+            api_tim_kiem_url = (request.form.get("api_tim_kiem_url") or "").strip()
+            api_tim_kiem_body = (request.form.get("api_tim_kiem_body") or "").strip()
+            api_tong_hop_url = (request.form.get("api_tong_hop_url") or "").strip()
+            api_xuat_file_url = (request.form.get("api_xuat_file_url") or "").strip()
 
             if not ten_danh_muc:
                 raise ValueError("Vui lòng nhập tên danh mục.")
@@ -79,8 +85,12 @@ def create_category():
             item = DanhMuc(
                 ten_danh_muc=ten_danh_muc,
                 scope=scope,
-                api_sync_url=api_sync_url if scope == "UNIT" else None,
-                api_ft_timkiem_body=api_ft_timkiem_body if scope == "UNIT" else None
+                sync_don_vi_id=sync_don_vi_id if scope == "COMMON" else None,
+                api_danh_muc_url=api_danh_muc_url or None,
+                api_tim_kiem_url=api_tim_kiem_url or None,
+                api_tim_kiem_body=api_tim_kiem_body or None,
+                api_tong_hop_url=api_tong_hop_url or None,
+                api_xuat_file_url=api_xuat_file_url or None
             )
             db.session.add(item)
             db.session.flush()
@@ -102,6 +112,7 @@ def create_category():
     return render_template(
         "category_form.html",
         item=None,
+        units=DonVi.query.order_by(DonVi.id.asc()).all(),
         error=error
     )
 
@@ -115,8 +126,12 @@ def edit_category(category_id):
         try:
             ten_danh_muc = (request.form.get("ten_danh_muc") or "").strip()
             scope = (request.form.get("scope") or "COMMON").strip().upper()
-            api_sync_url = (request.form.get("api_sync_url") or "").strip()
-            api_ft_timkiem_body = (request.form.get("api_ft_timkiem_body") or "").strip()
+            sync_don_vi_id = to_int_or_none(request.form.get("sync_don_vi_id"))
+            api_danh_muc_url = (request.form.get("api_danh_muc_url") or "").strip()
+            api_tim_kiem_url = (request.form.get("api_tim_kiem_url") or "").strip()
+            api_tim_kiem_body = (request.form.get("api_tim_kiem_body") or "").strip()
+            api_tong_hop_url = (request.form.get("api_tong_hop_url") or "").strip()
+            api_xuat_file_url = (request.form.get("api_xuat_file_url") or "").strip()
 
             if not ten_danh_muc:
                 raise ValueError("Vui lòng nhập tên danh mục.")
@@ -142,8 +157,12 @@ def edit_category(category_id):
 
             item.ten_danh_muc = ten_danh_muc
             item.scope = scope
-            item.api_sync_url = api_sync_url if scope == "UNIT" else None
-            item.api_ft_timkiem_body = api_ft_timkiem_body if scope == "UNIT" else None
+            item.sync_don_vi_id = sync_don_vi_id if scope == "COMMON" else None
+            item.api_danh_muc_url = api_danh_muc_url or None
+            item.api_tim_kiem_url = api_tim_kiem_url or None
+            item.api_tim_kiem_body = api_tim_kiem_body or None
+            item.api_tong_hop_url = api_tong_hop_url or None
+            item.api_xuat_file_url = api_xuat_file_url or None
 
             if scope == "COMMON":
                 get_or_create_common_dataset(item)
@@ -158,6 +177,7 @@ def edit_category(category_id):
     return render_template(
         "category_form.html",
         item=item,
+        units=DonVi.query.order_by(DonVi.id.asc()).all(),
         error=error
     )
 
@@ -429,6 +449,27 @@ def clear_category_records(category_id):
         )
 
 
+@category_bp.route("/<int:category_id>/sync", methods=["POST"])
+def sync_category_common(category_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    if (item.scope or "COMMON").upper() != "COMMON":
+        return jsonify({"error": "Route này chỉ dùng cho danh mục chung."}), 400
+
+    dataset = get_or_create_common_dataset(item)
+    return run_sync_for_category(item=item, dataset=dataset, unit=resolve_sync_unit(item=item, dataset=dataset))
+
+
+@category_bp.route("/<int:category_id>/sync-login", methods=["POST"])
+def sync_category_common_login(category_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    if (item.scope or "COMMON").upper() != "COMMON":
+        return jsonify({"error": "Route này chỉ dùng cho danh mục chung."}), 400
+
+    return run_sync_login_for_unit(resolve_sync_unit(item=item, dataset=None))
+
+
 @category_bp.route("/<int:category_id>/datasets/<int:dataset_id>/sync", methods=["POST"])
 def sync_category_dataset(category_id, dataset_id):
     item = DanhMuc.query.get_or_404(category_id)
@@ -439,60 +480,7 @@ def sync_category_dataset(category_id, dataset_id):
         .first_or_404()
     )
 
-    if (item.scope or "").upper() != "UNIT":
-        return jsonify({"error": "Chỉ hỗ trợ đồng bộ cho danh mục riêng."}), 400
-
-    if not dataset.don_vi:
-        return jsonify({"error": "Bộ dữ liệu chưa gắn đơn vị."}), 400
-
-    if not item.api_sync_url:
-        return jsonify({"error": "Danh mục chưa cấu hình API đồng bộ."}), 400
-
-    try:
-        root_resp = check_bhyt_root_status(dataset.don_vi)
-
-        if root_resp.status_code == 200:
-            captcha_html = refresh_bhyt_captcha(dataset.don_vi)
-            return jsonify({
-                "need_login": True,
-                "captcha_html": captcha_html
-            })
-
-        if root_resp.status_code != 302:
-            raise ValueError(f"Không kiểm tra được trạng thái đăng nhập BHYT. HTTP {root_resp.status_code}")
-
-        post_result = post_sync_export(dataset.don_vi, item)
-        post_data = post_result["data"]
-
-        if str(post_data.get("result")).upper() != "OK":
-            raise ValueError(f"API đồng bộ phản hồi không hợp lệ: {post_data}")
-
-        file_bytes = get_sync_stream(dataset.don_vi, item.api_sync_url)
-
-        fields = (
-            DanhMucField.query
-            .filter_by(danh_muc_id=item.id)
-            .order_by(DanhMucField.id.asc())
-            .all()
-        )
-
-        clear_dataset_records(dataset)
-        db.session.flush()
-
-        import_excel_rows(dataset, fields, file_bytes)
-        db.session.commit()
-
-        return jsonify({
-            "success": True,
-            "message": f"Đồng bộ thành công. Số bản ghi export: {post_data.get('countList', 'không rõ')}"
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 400
+    return run_sync_for_category(item=item, dataset=dataset, unit=resolve_sync_unit(item=item, dataset=dataset))
 
 
 @category_bp.route("/<int:category_id>/datasets/<int:dataset_id>/sync-login", methods=["POST"])
@@ -505,8 +493,69 @@ def sync_category_dataset_login(category_id, dataset_id):
         .first_or_404()
     )
 
-    if not dataset.don_vi:
-        return jsonify({"error": "Bộ dữ liệu chưa gắn đơn vị."}), 400
+    return run_sync_login_for_unit(resolve_sync_unit(item=item, dataset=dataset))
+
+
+def run_sync_for_category(item, dataset, unit):
+    try:
+        validate_sync_config(item)
+
+        if not unit:
+            raise ValueError("Chưa xác định được đơn vị để đồng bộ.")
+
+        root_resp = check_bhyt_root_status(unit)
+
+        if root_resp.status_code == 200:
+            captcha_html = refresh_bhyt_captcha(unit)
+            return jsonify({
+                "need_login": True,
+                "captcha_html": captcha_html
+            })
+
+        if root_resp.status_code != 302:
+            raise ValueError(f"Không kiểm tra được trạng thái đăng nhập BHYT. HTTP {root_resp.status_code}")
+
+        post_result = post_sync_export(unit, item)
+        post_data = post_result["data"]
+
+        if str(post_data.get("result")).upper() != "OK":
+            raise ValueError(f"API tổng hợp Excel phản hồi không hợp lệ: {post_data}")
+
+        file_bytes = get_sync_stream(unit, item.api_xuat_file_url)
+
+        clear_dataset_records(dataset)
+        db.session.flush()
+
+        DanhMucRecordValue.query.filter(
+            DanhMucRecordValue.field_id.in_(
+                db.session.query(DanhMucField.id).filter(DanhMucField.danh_muc_id == item.id)
+            )
+        ).delete(synchronize_session=False)
+        DanhMucField.query.filter_by(danh_muc_id=item.id).delete(synchronize_session=False)
+        db.session.flush()
+
+        import_excel_rows(dataset, [], file_bytes, auto_create_fields=True)
+        db.session.commit()
+
+        redirect_url = build_dataset_records_url(item=item, dataset=dataset, page=1, page_size=50)
+
+        return jsonify({
+            "success": True,
+            "message": f"Đồng bộ thành công. Số bản ghi export: {post_data.get('countList', 'không rõ')}",
+            "redirect_url": redirect_url
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
+
+def run_sync_login_for_unit(unit):
+    if not unit:
+        return jsonify({"error": "Chưa xác định được đơn vị để đăng nhập đồng bộ."}), 400
 
     try:
         payload = request.get_json(silent=True) or {}
@@ -515,7 +564,7 @@ def sync_category_dataset_login(category_id, dataset_id):
         if not captcha:
             raise ValueError("Vui lòng nhập captcha.")
 
-        login_result = login_bhyt(dataset.don_vi, captcha)
+        login_result = login_bhyt(unit, captcha)
         data = login_result["data"]
 
         if data.get("data") != 1:
@@ -538,6 +587,23 @@ def sync_category_dataset_login(category_id, dataset_id):
         }), 400
 
 
+def resolve_sync_unit(item, dataset=None):
+    scope = (item.scope or "COMMON").upper()
+
+    if scope == "UNIT":
+        if dataset and dataset.don_vi:
+            return dataset.don_vi
+        raise ValueError("Bộ dữ liệu chưa gắn đơn vị.")
+
+    if item.sync_don_vi:
+        return item.sync_don_vi
+
+    if item.sync_don_vi_id:
+        return DonVi.query.get(item.sync_don_vi_id)
+
+    raise ValueError("Danh mục chung chưa chọn đơn vị gốc để đồng bộ.")
+
+
 def handle_dataset_records(item, dataset):
     fields = (
         DanhMucField.query
@@ -548,11 +614,15 @@ def handle_dataset_records(item, dataset):
     error = request.args.get("error") or None
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
+    page_size = normalize_page_size(request.args.get("page_size", type=int, default=50))
+    page = request.args.get("page", type=int, default=1) or 1
+    filter_conditions = parse_filter_conditions(request.args)
+
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
 
         try:
-            if not fields:
+            if not fields and action in ["create_manual", "import_json", "import_excel", "update_record"]:
                 raise ValueError("Danh mục chưa có field, vui lòng tạo field trước.")
 
             if action == "create_manual":
@@ -573,14 +643,16 @@ def handle_dataset_records(item, dataset):
 
                 db.session.commit()
 
+                redirect_url = build_dataset_records_url(item=item, dataset=dataset, page=1, page_size=page_size)
                 if is_ajax:
                     return jsonify({
                         "success": True,
                         "record_id": record.id,
-                        "cells": cell_values
+                        "cells": cell_values,
+                        "redirect_url": redirect_url
                     })
 
-                return redirect(request.path)
+                return redirect(redirect_url)
 
             if action == "update_record":
                 record_id = to_int_or_none(request.form.get("record_id"))
@@ -616,7 +688,7 @@ def handle_dataset_records(item, dataset):
                         "cells": cell_values
                     })
 
-                return redirect(request.path)
+                return redirect(build_dataset_records_url(item=item, dataset=dataset, page=page, page_size=page_size, filter_conditions=filter_conditions))
 
             if action == "delete_record":
                 record_id = to_int_or_none(request.form.get("record_id"))
@@ -628,13 +700,20 @@ def handle_dataset_records(item, dataset):
                 db.session.delete(record)
                 db.session.commit()
 
+                total_after_delete = build_records_query(dataset.id, filter_conditions).count()
+                total_pages_after_delete = max(1, (total_after_delete + page_size - 1) // page_size)
+                new_page = min(page, total_pages_after_delete)
+                redirect_url = build_dataset_records_url(item=item, dataset=dataset, page=new_page, page_size=page_size, filter_conditions=filter_conditions)
+
                 if is_ajax:
                     return jsonify({
                         "success": True,
-                        "record_id": record_id
+                        "record_id": record_id,
+                        "redirect_url": redirect_url,
+                        "remaining_count": total_after_delete
                     })
 
-                return redirect(request.path)
+                return redirect(redirect_url)
 
             if action == "import_json":
                 json_text = (request.form.get("json_text") or "").strip()
@@ -643,7 +722,7 @@ def handle_dataset_records(item, dataset):
 
                 import_json_rows(dataset, fields, json_text)
                 db.session.commit()
-                return redirect(request.path)
+                return redirect(build_dataset_records_url(item=item, dataset=dataset, page=1, page_size=page_size))
 
             if action == "import_excel":
                 excel_file = request.files.get("excel_file")
@@ -652,7 +731,7 @@ def handle_dataset_records(item, dataset):
 
                 import_excel_rows(dataset, fields, excel_file.read())
                 db.session.commit()
-                return redirect(request.path)
+                return redirect(build_dataset_records_url(item=item, dataset=dataset, page=1, page_size=page_size))
 
             raise ValueError("Thao tác không hợp lệ.")
 
@@ -665,14 +744,39 @@ def handle_dataset_records(item, dataset):
                 }), 400
             error = str(e)
 
+    total_records = DanhMucRecord.query.filter_by(dataset_id=dataset.id).count()
+    records_query = build_records_query(dataset.id, filter_conditions)
+    filtered_total = records_query.count()
+    total_pages = max(1, (filtered_total + page_size - 1) // page_size)
+
+    if page > total_pages:
+        page = total_pages
+    if page < 1:
+        page = 1
+
     records = (
-        DanhMucRecord.query
-        .filter_by(dataset_id=dataset.id)
+        records_query
         .order_by(DanhMucRecord.id.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
 
     record_rows = build_record_rows(records, fields)
+
+    sync_unit = None
+    try:
+        sync_unit = resolve_sync_unit(item=item, dataset=dataset)
+    except Exception:
+        sync_unit = None
+
+    scope = (item.scope or "COMMON").upper()
+    if scope == "UNIT":
+        sync_post_url = url_for("category_bp.sync_category_dataset", category_id=item.id, dataset_id=dataset.id)
+        sync_login_url = url_for("category_bp.sync_category_dataset_login", category_id=item.id, dataset_id=dataset.id)
+    else:
+        sync_post_url = url_for("category_bp.sync_category_common", category_id=item.id)
+        sync_login_url = url_for("category_bp.sync_category_common_login", category_id=item.id)
 
     return render_template(
         "category_records.html",
@@ -681,8 +785,83 @@ def handle_dataset_records(item, dataset):
         fields=fields,
         records=records,
         record_rows=record_rows,
-        error=error
+        error=error,
+        sync_unit=sync_unit,
+        sync_post_url=sync_post_url,
+        sync_login_url=sync_login_url,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        total_records=total_records,
+        filtered_total=filtered_total,
+        page_start_index=((page - 1) * page_size) + 1 if filtered_total else 0,
+        filter_conditions=filter_conditions
     )
+
+
+def normalize_page_size(page_size):
+    allowed_sizes = [10, 50, 200, 1000]
+    if page_size not in allowed_sizes:
+        return 50
+    return page_size
+
+
+def parse_filter_conditions(args):
+    field_ids = args.getlist("filter_field_id")
+    values = args.getlist("filter_value")
+
+    conditions = []
+    for field_id, value in zip(field_ids, values):
+        field_id = to_int_or_none(field_id)
+        value = (value or "").strip()
+        if not field_id or not value:
+            continue
+        conditions.append({
+            "field_id": field_id,
+            "value": value
+        })
+
+    return conditions
+
+
+def build_records_query(dataset_id, filter_conditions=None):
+    query = DanhMucRecord.query.filter_by(dataset_id=dataset_id)
+    filter_conditions = filter_conditions or []
+
+    for condition in filter_conditions:
+        field_id = condition.get("field_id")
+        value = (condition.get("value") or "").strip()
+        if not field_id or not value:
+            continue
+
+        matching_record_ids = (
+            db.session.query(DanhMucRecordValue.record_id)
+            .join(DanhMucRecord, DanhMucRecord.id == DanhMucRecordValue.record_id)
+            .filter(DanhMucRecord.dataset_id == dataset_id)
+            .filter(DanhMucRecordValue.field_id == field_id)
+            .filter(func.coalesce(DanhMucRecordValue.value, "").ilike(f"%{value}%"))
+        )
+        query = query.filter(DanhMucRecord.id.in_(matching_record_ids))
+
+    return query
+
+
+def build_dataset_records_url(item, dataset, page=1, page_size=50, filter_conditions=None):
+    scope = (item.scope or "COMMON").upper()
+    if scope == "UNIT":
+        base_url = url_for("category_bp.manage_category_dataset_records", category_id=item.id, dataset_id=dataset.id)
+    else:
+        base_url = url_for("category_bp.manage_category_records", category_id=item.id)
+
+    params = [("page", page), ("page_size", normalize_page_size(page_size))]
+    for condition in (filter_conditions or []):
+        field_id = condition.get("field_id")
+        value = (condition.get("value") or "").strip()
+        if field_id and value:
+            params.append(("filter_field_id", field_id))
+            params.append(("filter_value", value))
+
+    return base_url + "?" + urlencode(params, doseq=True)
 
 
 def get_or_create_common_dataset(category):

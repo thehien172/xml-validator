@@ -57,6 +57,16 @@
             </div>
 
             <div class="col-3">
+                <label for="thang_select">Chọn tháng</label>
+                <select id="thang_select">
+                    <option value="">-- Chọn tháng --</option>
+                    {% for m in range(1,13) %}
+                    <option value="{{ "%02d"|format(m) }}">Tháng {{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-3">
                 <label for="tu_ngay">Từ ngày</label>
                 <input type="date" id="tu_ngay" name="tu_ngay" value="{{ selected_tu_ngay }}" required>
             </div>
@@ -96,8 +106,8 @@
                 <select name="file_don_vi_id" id="file_don_vi_select">
                     <option value="">-- Chọn đơn vị --</option>
                     {% for u in units %}
-                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}"
-                        {% if selected_file_unit_id|string==u.id|string %}selected{% endif %}>
+                    <option value="{{ u.id }}" data-system="{{ u.he_thong_id }}" {% if
+                        selected_file_unit_id|string==u.id|string %}selected{% endif %}>
                         {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
                     </option>
                     {% endfor %}
@@ -786,6 +796,48 @@
                 closeModal();
             }
         });
+
+        const monthSelect = document.getElementById("thang_select");
+        const tuNgayInput = document.getElementById("tu_ngay");
+        const denNgayInput = document.getElementById("den_ngay");
+
+        if (!monthSelect || !tuNgayInput || !denNgayInput) return;
+
+        function pad(n) {
+            return String(n).padStart(2, "0");
+        }
+
+        function getLastDayOfMonth(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        function fillDateRangeByMonth(month, year) {
+            if (!month) return;
+
+            const lastDay = getLastDayOfMonth(year, parseInt(month, 10));
+            tuNgayInput.value = `${year}-${month}-01`;
+            denNgayInput.value = `${year}-${month}-${pad(lastDay)}`;
+        }
+
+        monthSelect.addEventListener("change", function () {
+            const month = this.value;
+            if (!month) return;
+
+            const year = new Date().getFullYear();
+            fillDateRangeByMonth(month, year);
+        });
+
+        const now = new Date();
+        const currentMonth = pad(now.getMonth());
+        const currentYear = now.getFullYear();
+
+        if (!monthSelect.value) {
+            monthSelect.value = currentMonth;
+        }
+
+        if (!tuNgayInput.value && !denNgayInput.value) {
+            fillDateRangeByMonth(monthSelect.value, currentYear);
+        }
     })();
 </script>
 {% endblock %}

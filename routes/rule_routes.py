@@ -99,8 +99,7 @@ def get_category_fields():
     for f in fields:
         result.append({
             "id": f.id,
-            "ma_truong": f.ma_truong,
-            "ten_truong": f.ten_truong
+            "ma_truong": f.ma_truong
         })
 
     return jsonify(result)

@@ -1,4 +1,10 @@
 {% extends "base.html" %}
+{% macro render_filter_hidden_inputs(filter_conditions) -%}
+{% for cond in filter_conditions %}
+<input type="hidden" name="filter_field_id" value="{{ cond.field_id }}">
+<input type="hidden" name="filter_value" value="{{ cond.value }}">
+{% endfor %}
+{%- endmacro %}
 {% block title %}Dữ liệu danh mục{% endblock %}
 
 {% block content %}
@@ -9,7 +15,7 @@
         <strong>{{ dataset.ten_bo_du_lieu }}</strong>
         {% if dataset.don_vi %} - {{ dataset.don_vi.ten_don_vi }}{% endif %}
         {% else %}
-        Quản lý dữ liệu danh mục dùng chung. Có thể thêm tay hoặc import JSON / Excel.
+        Quản lý dữ liệu danh mục dùng chung.
         {% endif %}
     </div>
 </div>
@@ -26,7 +32,10 @@
             <div>
                 <h2 class="card-title" style="margin-bottom: 0;">Danh sách dữ liệu</h2>
                 <div class="muted" id="record-count-text">
-                    Tổng số: {{ record_rows|length if record_rows else 0 }} dòng
+                    Tổng số: {{ total_records or 0 }} dòng
+                    {% if fields and filter_conditions %}
+                    | Sau lọc: {{ filtered_total or 0 }} dòng
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -36,7 +45,7 @@
             <button type="button" class="btn btn-secondary" id="toggle-create-form-btn">+ Thêm dòng</button>
             <button type="button" class="btn btn-primary" id="open-import-modal-btn">Import</button>
 
-            {% if record_rows %}
+            {% if total_records %}
             {% if item.scope == 'UNIT' %}
             <form method="POST" action="/categories/{{ item.id }}/datasets/{{ dataset.id }}/records/clear"
                 style="display:inline;"
@@ -50,10 +59,10 @@
             </form>
             {% endif %}
             {% endif %}
-
-            {% if item.scope == 'UNIT' and dataset and item.api_sync_url %}
-            <button type="button" class="btn btn-primary" id="open-sync-modal-btn">Đồng bộ</button>
             {% endif %}
+
+            {% if sync_post_url and item.api_danh_muc_url and item.api_tong_hop_url and item.api_xuat_file_url %}
+            <button type="button" class="btn btn-primary" id="open-sync-modal-btn">Đồng bộ</button>
             {% endif %}
 
             {% if item.scope == 'UNIT' %}
@@ -93,15 +102,48 @@
         <div class="filter-panel__header">
             <div>
                 <h3 class="filter-panel__title">Bộ lọc dữ liệu</h3>
-                <div class="muted">Có thể thêm nhiều điều kiện lọc cùng lúc. Hiện tại áp dụng logic AND.</div>
             </div>
             <div class="actions" style="margin-top:0;">
-                <button type="button" class="btn btn-secondary" id="add-filter-btn">+ Thêm điều kiện lọc</button>
+                <button type="button" class="btn btn-secondary" id="add-filter-btn">+ Thêm điều kiện</button>
                 <button type="button" class="btn btn-secondary" id="clear-filters-btn">Xóa bộ lọc</button>
             </div>
         </div>
 
-        <div id="filter-rows"></div>
+        <form method="GET" id="filter-form">
+            <input type="hidden" name="page" value="1">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
+            <div id="filter-rows">
+                {% if filter_conditions %}
+                {% for cond in filter_conditions %}
+                <div class="filter-row">
+                    <select class="js-filter-field" name="filter_field_id">
+                        <option value="">-- Chọn header --</option>
+                        {% for f in fields %}
+                        <option value="{{ f.id }}" {% if cond.field_id==f.id %}selected{% endif %}>{{ f.ma_truong }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" class="js-filter-value" name="filter_value" value="{{ cond.value }}"
+                        placeholder="Nhập giá trị lọc">
+                    <button type="button" class="btn btn-danger js-remove-filter-btn">Xóa</button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="filter-row">
+                    <select class="js-filter-field" name="filter_field_id">
+                        <option value="">-- Chọn header --</option>
+                        {% for f in fields %}
+                        <option value="{{ f.id }}">{{ f.ma_truong }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" class="js-filter-value" name="filter_value" value=""
+                        placeholder="Nhập giá trị lọc">
+                    <button type="button" class="btn btn-danger js-remove-filter-btn">Xóa</button>
+                    <button type="submit" class="btn btn-primary">Áp dụng</button>
+                </div>
+                {% endif %}
+            </div>
+        </form>
     </div>
 
     {% if record_rows %}
@@ -111,9 +153,7 @@
                 <tr>
                     <th style="width:90px;">STT</th>
                     {% for f in fields %}
-                    <th data-field-id="{{ f.id }}" data-field-code="{{ f.ma_truong }}">
-                        <code>{{ f.ma_truong }}</code>
-                    </th>
+                    <th><code>{{ f.ma_truong }}</code></th>
                     {% endfor %}
                     <th style="width:160px;">Thao tác</th>
                 </tr>
@@ -121,8 +161,7 @@
             <tbody id="records-tbody">
                 {% for row in record_rows %}
                 <tr class="js-edit-row" data-record-id="{{ row.record.id }}">
-                    <td><strong class="js-record-id">{{ loop.index }}</strong></td>
-
+                    <td><strong class="js-record-id">{{ page_start_index + loop.index0 }}</strong></td>
                     {% for cell in row.cells %}
                     <td class="js-edit-cell" data-field-id="{{ fields[loop.index0].id }}"
                         data-field-code="{{ fields[loop.index0].ma_truong }}" data-original="{{ cell|e }}">
@@ -132,7 +171,6 @@
                             style="display:none; min-width:130px;">
                     </td>
                     {% endfor %}
-
                     <td>
                         <div class="actions actions-center">
                             <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>
@@ -147,69 +185,62 @@
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div class="empty-state" id="records-empty-state">
+        {% if filter_conditions %}
+        Không có dữ liệu phù hợp với bộ lọc hiện tại.
+        {% else %}
+        Chưa có dữ liệu trong bộ dữ liệu này.
+        {% endif %}
+    </div>
+    {% endif %}
 
     <div class="table-pagination" id="table-pagination">
         <div class="table-pagination__left">
-            <label for="page-size-select">Hiển thị</label>
-            <select id="page-size-select">
-                <option value="10">10</option>
-                <option value="50" selected>50</option>
-                <option value="200">200</option>
-                <option value="1000">1000</option>
-            </select>
-            <!-- <span>dòng / trang</span> -->
+            <form method="GET" id="page-size-form" class="inline-form">
+                <input type="hidden" name="page" value="1">
+                {{ render_filter_hidden_inputs(filter_conditions) }}
+                <label for="page-size-select">Hiển thị</label>
+                <select class="page-size-select" id="page-size-select" name="page_size">
+                    <option value="10" {% if page_size==10 %}selected{% endif %}>10</option>
+                    <option value="50" {% if page_size==50 %}selected{% endif %}>50</option>
+                    <option value="200" {% if page_size==200 %}selected{% endif %}>200</option>
+                    <option value="1000" {% if page_size==1000 %}selected{% endif %}>1000</option>
+                </select>
+            </form>
         </div>
 
         <div class="table-pagination__right">
-            <button type="button" class="btn btn-secondary" id="prev-page-btn">Trang trước</button>
-            <span class="muted" id="pagination-info">Trang 1 / 1</span>
-            <button type="button" class="btn btn-secondary" id="next-page-btn">Trang sau</button>
+            <form method="GET" class="inline-form">
+                <input type="hidden" name="page" value="{{ 1 if page <= 1 else page - 1 }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                {{ render_filter_hidden_inputs(filter_conditions) }}
+                <input type="hidden" name="scroll_table" value="1">
+                <button type="submit" class="btn btn-secondary" {% if page <=1 %}disabled{% endif %}>Trang
+                    trước</button>
+            </form>
+            <span class="muted" id="pagination-info">
+                Trang {{ page }} / {{ total_pages }}
+                {% if filtered_total %}
+                - Hiển thị {{ page_start_index }} đến {{ page_start_index + record_rows|length - 1 }} / {{
+                filtered_total }} dòng
+                {% else %}
+                - 0 dòng
+                {% endif %}
+            </span>
+            <form method="GET" class="inline-form">
+                <input type="hidden" name="page" value="{{ page + 1 if page < total_pages else total_pages }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                {{ render_filter_hidden_inputs(filter_conditions) }}
+                <input type="hidden" name="scroll_table" value="1">
+                <button type="submit" class="btn btn-secondary" {% if page>= total_pages %}disabled{% endif %}>Trang
+                    sau</button>
+            </form>
         </div>
     </div>
-    {% else %}
-    <div class="empty-state" id="records-empty-state">
-        Chưa có dữ liệu trong bộ dữ liệu này.
-    </div>
-
-    <div class="table-wrap" id="records-table-wrap" style="display:none;">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:90px;">STT</th>
-                    {% for f in fields %}
-                    <th data-field-id="{{ f.id }}" data-field-code="{{ f.ma_truong }}">
-                        <code>{{ f.ma_truong }}</code>
-                    </th>
-                    {% endfor %}
-                    <th style="width:160px;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody id="records-tbody"></tbody>
-        </table>
-    </div>
-
-    <div class="table-pagination" id="table-pagination" style="display:none;">
-        <div class="table-pagination__left">
-            <label for="page-size-select">Hiển thị</label>
-            <select id="page-size-select">
-                <option value="10">10</option>
-                <option value="50" selected>50</option>
-                <option value="200">200</option>
-                <option value="1000">1000</option>
-            </select>
-            <span>dòng / trang</span>
-        </div>
-
-        <div class="table-pagination__right">
-            <button type="button" class="btn btn-secondary" id="prev-page-btn">Trang trước</button>
-            <span class="muted" id="pagination-info">Trang 1 / 1</span>
-            <button type="button" class="btn btn-secondary" id="next-page-btn">Trang sau</button>
-        </div>
-    </div>
-    {% endif %}
     {% else %}
     <div class="empty-state">
-        Danh mục chưa có field. Vui lòng tạo field trước.
+        Danh mục chưa có field. Có thể bấm đồng bộ để hệ thống tạo lại field từ dữ liệu mới.
         <div class="actions actions-center" style="margin-top: 12px;">
             <a href="/categories/{{ item.id }}/fields" class="btn btn-primary">Danh sách field</a>
         </div>
@@ -249,14 +280,10 @@
             <div id="import-excel-box">
                 <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="import_excel">
-
                     <label>File Excel</label>
                     <input type="file" name="excel_file" accept=".xlsx,.xlsm,.xltx,.xltm">
-
-                    <div class="muted" style="margin-top:8px;">
-                        Dòng đầu tiên phải là tên cột, và tên cột phải trùng với mã field.
-                    </div>
-
+                    <div class="muted" style="margin-top:8px;">Dòng đầu tiên phải là tên cột, và tên cột phải trùng với
+                        mã field.</div>
                     <div class="actions" style="margin-top: 12px;">
                         <button type="submit" class="btn btn-primary">Import Excel</button>
                     </div>
@@ -266,24 +293,15 @@
             <div id="import-json-box" style="display:none;">
                 <form method="POST">
                     <input type="hidden" name="action" value="import_json">
-
                     <label>Nội dung JSON</label>
                     <textarea name="json_text" placeholder='Ví dụ:
 [
   {
     "ma_bac_si": "BS01",
     "ten_bac_si": "Nguyen Van A"
-  },
-  {
-    "ma_bac_si": "BS02",
-    "ten_bac_si": "Tran Van B"
   }
 ]'></textarea>
-
-                    <div class="muted" style="margin-top:8px;">
-                        Key JSON phải trùng với mã field.
-                    </div>
-
+                    <div class="muted" style="margin-top:8px;">Key JSON phải trùng với mã field.</div>
                     <div class="actions" style="margin-top: 12px;">
                         <button type="submit" class="btn btn-primary">Import JSON</button>
                     </div>
@@ -292,8 +310,9 @@
         </div>
     </div>
 </div>
+{% endif %}
 
-{% if item.scope == 'UNIT' and dataset and item.api_sync_url %}
+{% if sync_post_url and item.api_danh_muc_url and item.api_tong_hop_url and item.api_xuat_file_url %}
 <div class="modal-overlay" id="sync-modal" style="display:none;">
     <div class="modal-card" style="max-width: 700px;">
         <div class="modal-card__header">
@@ -301,13 +320,15 @@
                 <h3 class="modal-card__title">Đồng bộ danh mục</h3>
                 <div class="muted">Nếu cookie BHYT còn hiệu lực thì hệ thống sẽ đồng bộ ngay. Nếu hết hạn sẽ yêu cầu
                     nhập captcha để đăng nhập.</div>
+                {% if sync_unit %}<div class="muted" style="margin-top:6px;">Đơn vị dùng để đồng bộ: <strong>{{
+                        sync_unit.ten_don_vi }}</strong>{% if sync_unit.ma_don_vi %} ({{ sync_unit.ma_don_vi }}){% endif
+                    %}</div>{% endif %}
             </div>
             <button type="button" class="btn btn-secondary" id="close-sync-modal-btn">Đóng</button>
         </div>
 
         <div class="modal-card__body">
             <div id="sync-message-box" class="muted" style="margin-bottom: 12px;"></div>
-
             <div id="sync-captcha-box" style="display:none;">
                 <label>Captcha</label>
                 <div id="sync-captcha-image" style="margin-bottom: 12px;"></div>
@@ -316,7 +337,6 @@
                     <button type="button" class="btn btn-primary" id="submit-sync-login-btn">Đăng nhập</button>
                 </div>
             </div>
-
             <div class="actions" style="margin-top: 8px;">
                 <button type="button" class="btn btn-primary" id="start-sync-btn">Bắt đầu đồng bộ</button>
             </div>
@@ -324,9 +344,12 @@
     </div>
 </div>
 {% endif %}
-{% endif %}
 
 <style>
+    .page-size-select {
+        width: auto;
+    }
+
     .records-toolbar {
         display: flex;
         align-items: flex-start;
@@ -343,36 +366,25 @@
         align-items: center;
     }
 
-    .create-panel {
-        margin-bottom: 16px;
-        padding: 16px;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        background: #fafafa;
-    }
-
-    .create-panel__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .create-panel__title {
-        margin: 0;
-        font-size: 16px;
-    }
-
+    .create-panel,
     .filter-panel {
         margin-bottom: 16px;
         padding: 16px;
         border: 1px solid #e5e7eb;
         border-radius: 10px;
+    }
+
+    .create-panel {
+        background: #fafafa;
+    }
+
+    .filter-panel {
         background: #f8fafc;
     }
 
-    .filter-panel__header {
+    .create-panel__header,
+    .filter-panel__header,
+    .modal-card__header {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
@@ -381,9 +393,10 @@
         margin-bottom: 12px;
     }
 
-    .filter-panel__title {
-        margin: 0 0 4px 0;
-        font-size: 16px;
+    .create-panel__title,
+    .filter-panel__title,
+    .modal-card__title {
+        margin: 0;
     }
 
     .filter-row {
@@ -392,10 +405,7 @@
         gap: 8px;
         margin-bottom: 8px;
         align-items: center;
-    }
-
-    .filter-row:last-child {
-        margin-bottom: 0;
+        grid-auto-flow: column;
     }
 
     .table-wrap {
@@ -423,10 +433,6 @@
         white-space: nowrap;
     }
 
-    .table-wrap tbody td {
-        vertical-align: top;
-    }
-
     .table-pagination {
         margin-top: 12px;
         display: flex;
@@ -437,16 +443,11 @@
     }
 
     .table-pagination__left,
-    .table-pagination__right {
+    .table-pagination__right,
+    .inline-form {
         display: flex;
         align-items: center;
         gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .table-pagination select {
-        min-width: 60px;
-        width: auto;
     }
 
     .modal-overlay {
@@ -471,29 +472,11 @@
         padding: 20px;
     }
 
-    .modal-card__header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-
-    .modal-card__title {
-        margin: 0 0 4px 0;
-        font-size: 18px;
-    }
-
     .js-edit-row.is-editing {
         background: #fff7ed;
     }
 
     @media (max-width: 768px) {
-        .modal-card {
-            max-width: 100%;
-            padding: 16px;
-        }
-
         .filter-row {
             grid-template-columns: 1fr;
         }
@@ -509,25 +492,10 @@
         var editingRow = null;
         var createForm = document.getElementById('create-record-form');
         var tableBody = document.getElementById('records-tbody');
-        var emptyState = document.getElementById('records-empty-state');
         var tableWrap = document.getElementById('records-table-wrap');
-
-        var paginationWrap = document.getElementById('table-pagination');
-        var prevPageBtn = document.getElementById('prev-page-btn');
-        var nextPageBtn = document.getElementById('next-page-btn');
-        var paginationInfo = document.getElementById('pagination-info');
-        var pageSizeSelect = document.getElementById('page-size-select');
-        var currentPage = 1;
-        var pageSize = pageSizeSelect ? parseInt(pageSizeSelect.value, 10) || 50 : 50;
-
-        var filterRowsWrap = document.getElementById('filter-rows');
-        var addFilterBtn = document.getElementById('add-filter-btn');
-        var clearFiltersBtn = document.getElementById('clear-filters-btn');
-
         var toggleCreateBtn = document.getElementById('toggle-create-form-btn');
         var closeCreateBtn = document.getElementById('close-create-form-btn');
         var createPanel = document.getElementById('create-record-panel');
-
         var openImportBtn = document.getElementById('open-import-modal-btn');
         var closeImportBtn = document.getElementById('close-import-modal-btn');
         var importModal = document.getElementById('import-modal');
@@ -535,7 +503,6 @@
         var importExcelBox = document.getElementById('import-excel-box');
         var importJsonBox = document.getElementById('import-json-box');
         var downloadTemplateBtn = document.getElementById('download-template-btn');
-
         var openSyncBtn = document.getElementById('open-sync-modal-btn');
         var closeSyncBtn = document.getElementById('close-sync-modal-btn');
         var syncModal = document.getElementById('sync-modal');
@@ -545,19 +512,21 @@
         var syncCaptchaBox = document.getElementById('sync-captcha-box');
         var syncCaptchaImage = document.getElementById('sync-captcha-image');
         var syncCaptchaValue = document.getElementById('sync-captcha-value');
-function scrollToTopOfTable() {
+        var addFilterBtn = document.getElementById('add-filter-btn');
+        var clearFiltersBtn = document.getElementById('clear-filters-btn');
+        var filterRowsWrap = document.getElementById('filter-rows');
+        var filterForm = document.getElementById('filter-form');
+        var pageSizeSelect = document.getElementById('page-size-select');
+        var pageSizeForm = document.getElementById('page-size-form');
+
+        function scrollToTopOfTable() {
             if (!tableWrap) return;
-
             tableWrap.scrollTop = 0;
-
             var rect = tableWrap.getBoundingClientRect();
             var tableTop = rect.top + window.pageYOffset - 12;
-
-            window.scrollTo({
-                top: tableTop,
-                behavior: 'auto'
-            });
+            window.scrollTo({ top: tableTop, behavior: 'auto' });
         }
+
         function escapeHtml(value) {
             return String(value == null ? '' : value)
                 .replace(/&/g, '&amp;')
@@ -565,37 +534,6 @@ function scrollToTopOfTable() {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
-        }
-
-        function normalizeText(value) {
-            return String(value == null ? '' : value).trim().toLowerCase();
-        }
-
-        function getCategoryFields() {
-            var fields = [];
-            var headers = document.querySelectorAll('thead th[data-field-id]');
-            for (var i = 0; i < headers.length; i++) {
-                fields.push({
-                    id: headers[i].getAttribute('data-field-id'),
-                    ma_truong: headers[i].getAttribute('data-field-code') || ''
-                });
-            }
-            return fields;
-        }
-
-        function getAllRows() {
-            if (!tableBody) return [];
-            return Array.prototype.slice.call(tableBody.querySelectorAll('.js-edit-row'));
-        }
-
-        function renumberVisibleRows() {
-            var rows = getFilteredRows();
-            for (var i = 0; i < rows.length; i++) {
-                var sttEl = rows[i].querySelector('.js-record-id');
-                if (sttEl) {
-                    sttEl.textContent = i + 1;
-                }
-            }
         }
 
         function setRowEditMode(row, isEditing) {
@@ -606,34 +544,21 @@ function scrollToTopOfTable() {
             var btnSave = row.querySelector('.js-btn-save');
             var btnCancel = row.querySelector('.js-btn-cancel');
 
-            for (var i = 0; i < textEls.length; i++) {
-                textEls[i].style.display = isEditing ? 'none' : '';
-            }
-
-            for (var j = 0; j < inputEls.length; j++) {
-                inputEls[j].style.display = isEditing ? '' : 'none';
-            }
-
+            for (var i = 0; i < textEls.length; i++) textEls[i].style.display = isEditing ? 'none' : '';
+            for (var j = 0; j < inputEls.length; j++) inputEls[j].style.display = isEditing ? '' : 'none';
             if (btnEdit) btnEdit.style.display = isEditing ? 'none' : '';
             if (btnDelete) btnDelete.style.display = isEditing ? 'none' : '';
             if (btnSave) btnSave.style.display = isEditing ? '' : 'none';
             if (btnCancel) btnCancel.style.display = isEditing ? '' : 'none';
-
-            if (isEditing) {
-                row.classList.add('is-editing');
-            } else {
-                row.classList.remove('is-editing');
-            }
+            row.classList.toggle('is-editing', isEditing);
         }
 
         function resetRowValues(row) {
             var cells = row.querySelectorAll('.js-edit-cell');
             for (var i = 0; i < cells.length; i++) {
-                var cell = cells[i];
-                var original = cell.getAttribute('data-original') || '';
-                var textEl = cell.querySelector('.js-cell-text');
-                var inputEl = cell.querySelector('.js-cell-input');
-
+                var original = cells[i].getAttribute('data-original') || '';
+                var textEl = cells[i].querySelector('.js-cell-text');
+                var inputEl = cells[i].querySelector('.js-cell-input');
                 if (inputEl) inputEl.value = original;
                 if (textEl) textEl.textContent = original;
             }
@@ -643,307 +568,53 @@ function scrollToTopOfTable() {
             var formData = new FormData();
             formData.append('action', 'update_record');
             formData.append('record_id', row.getAttribute('data-record-id'));
-
             var inputs = row.querySelectorAll('.js-cell-input');
             for (var i = 0; i < inputs.length; i++) {
                 formData.append(inputs[i].name, inputs[i].value);
             }
-
             return formData;
         }
 
-        function getFilterConditions() {
-            if (!filterRowsWrap) return [];
-            var rows = filterRowsWrap.querySelectorAll('.filter-row');
-            var conditions = [];
-
-            for (var i = 0; i < rows.length; i++) {
-                var fieldSelect = rows[i].querySelector('.js-filter-field');
-                var valueInput = rows[i].querySelector('.js-filter-value');
-
-                if (!fieldSelect || !valueInput) continue;
-
-                var fieldId = fieldSelect.value;
-                var value = valueInput.value || '';
-
-                if (!fieldId || normalizeText(value) === '') {
-                    continue;
-                }
-
-                conditions.push({
-                    fieldId: fieldId,
-                    value: normalizeText(value)
-                });
-            }
-
-            return conditions;
-        }
-
-        function rowMatchesFilters(row, conditions) {
-            if (!conditions.length) return true;
-
-            for (var i = 0; i < conditions.length; i++) {
-                var condition = conditions[i];
-                var cell = row.querySelector('.js-edit-cell[data-field-id="' + condition.fieldId + '"]');
-                var cellText = '';
-
-                if (cell) {
-                    var textEl = cell.querySelector('.js-cell-text');
-                    var inputEl = cell.querySelector('.js-cell-input');
-
-                    if (row.classList.contains('is-editing') && inputEl) {
-                        cellText = inputEl.value || '';
-                    } else if (textEl) {
-                        cellText = textEl.textContent || '';
-                    } else {
-                        cellText = cell.getAttribute('data-original') || '';
-                    }
-                }
-
-                if (normalizeText(cellText).indexOf(condition.value) === -1) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        function getFilteredRows() {
-            var rows = getAllRows();
-            var conditions = getFilterConditions();
-            var filtered = [];
-
-            for (var i = 0; i < rows.length; i++) {
-                if (rowMatchesFilters(rows[i], conditions)) {
-                    filtered.push(rows[i]);
-                }
-            }
-
-            return filtered;
-        }
-
-        function renderPagination() {
-            var allRows = getAllRows();
-            var filteredRows = getFilteredRows();
-            var totalFiltered = filteredRows.length;
-            var totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
-
-            if (currentPage > totalPages) {
-                currentPage = totalPages;
-            }
-            if (currentPage < 1) {
-                currentPage = 1;
-            }
-
-            var start = (currentPage - 1) * pageSize;
-            var end = start + pageSize;
-
-            for (var i = 0; i < allRows.length; i++) {
-                allRows[i].style.display = 'none';
-            }
-
-            for (var j = 0; j < filteredRows.length; j++) {
-                filteredRows[j].style.display = (j >= start && j < end) ? '' : 'none';
-            }
-
-            renumberVisibleRows();
-
-            if (paginationInfo) {
-                paginationInfo.textContent = 'Trang ' + currentPage + ' / ' + totalPages + ' - ' + totalFiltered + ' dòng';
-            }
-
-            if (prevPageBtn) {
-                prevPageBtn.disabled = currentPage <= 1 || totalFiltered === 0;
-            }
-
-            if (nextPageBtn) {
-                nextPageBtn.disabled = currentPage >= totalPages || totalFiltered === 0;
-            }
-
-            if (paginationWrap) {
-                paginationWrap.style.display = getAllRows().length > 0 ? '' : 'none';
-            }
-        }
-
-        function refreshTableState(options) {
-            options = options || {};
-            updateRecordCount();
-
-            if (options.goToLastPage) {
-                var filteredCount = getFilteredRows().length;
-                currentPage = Math.max(1, Math.ceil(filteredCount / pageSize));
-            } else {
-                currentPage = 1;
-            }
-
-            renderPagination();
-            scrollToTopOfTable();
-        }
-
         function saveRowAjax(row) {
-            var formData = getRowPayload(row);
-
-            fetch(window.location.pathname, {
+            fetch(window.location.pathname + window.location.search, {
                 method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: getRowPayload(row)
             })
-                .then(function (res) {
-                    return res.json().then(function (data) {
-                        return { ok: res.ok, data: data };
-                    });
-                })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
-                    if (!result.ok || !result.data.success) {
-                        throw new Error(result.data.error || 'Lỗi khi lưu dữ liệu.');
-                    }
-
+                    if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Lỗi khi lưu dữ liệu.');
                     var cells = row.querySelectorAll('.js-edit-cell');
                     for (var i = 0; i < cells.length; i++) {
-                        var cell = cells[i];
-                        var inputEl = cell.querySelector('.js-cell-input');
-                        var textEl = cell.querySelector('.js-cell-text');
+                        var inputEl = cells[i].querySelector('.js-cell-input');
+                        var textEl = cells[i].querySelector('.js-cell-text');
                         var newValue = inputEl ? inputEl.value : '';
-
                         if (textEl) textEl.textContent = newValue;
-                        cell.setAttribute('data-original', newValue);
+                        cells[i].setAttribute('data-original', newValue);
                     }
-
                     setRowEditMode(row, false);
                     editingRow = null;
-                    renderPagination();
                 })
-                .catch(function (err) {
-                    alert(err.message || 'Có lỗi xảy ra khi lưu.');
-                });
+                .catch(function (err) { alert(err.message || 'Có lỗi xảy ra khi lưu.'); });
         }
 
         function deleteRowAjax(row) {
-            if (!confirm('Xóa dòng dữ liệu này?')) {
-                return;
-            }
-
+            if (!confirm('Xóa dòng dữ liệu này?')) return;
             var formData = new FormData();
             formData.append('action', 'delete_record');
             formData.append('record_id', row.getAttribute('data-record-id'));
 
-            fetch(window.location.pathname, {
+            fetch(window.location.pathname + window.location.search, {
                 method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 body: formData
             })
-                .then(function (res) {
-                    return res.json().then(function (data) {
-                        return { ok: res.ok, data: data };
-                    });
-                })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
-                    if (!result.ok || !result.data.success) {
-                        throw new Error(result.data.error || 'Lỗi khi xóa dữ liệu.');
-                    }
-
-                    if (editingRow === row) {
-                        editingRow = null;
-                    }
-
-                    row.remove();
-
-                    if (tableBody && tableBody.children.length === 0) {
-                        if (tableWrap) tableWrap.style.display = 'none';
-                        if (emptyState) emptyState.style.display = '';
-                    }
-
-                    refreshTableState();
+                    if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Lỗi khi xóa dữ liệu.');
+                    window.location.href = result.data.redirect_url || (window.location.pathname + window.location.search);
                 })
-                .catch(function (err) {
-                    alert(err.message || 'Có lỗi xảy ra khi xóa.');
-                });
-        }
-
-        function createRowElement(recordId, cells) {
-            var tr = document.createElement('tr');
-            tr.className = 'js-edit-row';
-            tr.setAttribute('data-record-id', recordId);
-
-            var fields = getCategoryFields();
-
-            var html = '<td><strong class="js-record-id"></strong></td>';
-
-            for (var i = 0; i < fields.length; i++) {
-                var field = fields[i];
-                var cellValue = cells[i] == null ? '' : String(cells[i]);
-
-                html += ''
-                    + '<td class="js-edit-cell"'
-                    + ' data-field-id="' + escapeHtml(field.id) + '"'
-                    + ' data-field-code="' + escapeHtml(field.ma_truong) + '"'
-                    + ' data-original="' + escapeHtml(cellValue) + '">'
-                    + '   <span class="js-cell-text">' + escapeHtml(cellValue) + '</span>'
-                    + '   <input'
-                    + '       type="text"'
-                    + '       class="js-cell-input"'
-                    + '       name="field_' + escapeHtml(field.id) + '"'
-                    + '       value="' + escapeHtml(cellValue) + '"'
-                    + '       placeholder="' + escapeHtml(field.ma_truong) + '"'
-                    + '       style="display:none; min-width:130px;"'
-                    + '   >'
-                    + '</td>';
-            }
-
-            html += ''
-                + '<td>'
-                + '    <div class="actions actions-center">'
-                + '        <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>'
-                + '        <button type="button" class="btn btn-danger js-btn-delete">Xóa</button>'
-                + '        <button type="button" class="btn btn-primary js-btn-save" style="display:none;">Lưu</button>'
-                + '        <button type="button" class="btn btn-secondary js-btn-cancel" style="display:none;">Hủy</button>'
-                + '    </div>'
-                + '</td>';
-
-            tr.innerHTML = html;
-            bindRow(tr);
-            return tr;
-        }
-
-        function createRecordAjax(form) {
-            var formData = new FormData(form);
-
-            fetch(window.location.pathname, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            })
-                .then(function (res) {
-                    return res.json().then(function (data) {
-                        return { ok: res.ok, data: data };
-                    });
-                })
-                .then(function (result) {
-                    if (!result.ok || !result.data.success) {
-                        throw new Error(result.data.error || 'Lỗi khi thêm dữ liệu.');
-                    }
-
-                    var row = createRowElement(result.data.record_id, result.data.cells || []);
-                    if (tableBody) {
-                        tableBody.appendChild(row);
-                    }
-
-                    if (tableWrap) tableWrap.style.display = '';
-                    if (emptyState) emptyState.style.display = 'none';
-
-                    form.reset();
-                    hideCreatePanel();
-                    refreshTableState({ goToLastPage: true });
-                })
-                .catch(function (err) {
-                    alert(err.message || 'Có lỗi xảy ra khi thêm dữ liệu.');
-                });
+                .catch(function (err) { alert(err.message || 'Có lỗi xảy ra khi xóa.'); });
         }
 
         function bindRow(row) {
@@ -952,67 +623,33 @@ function scrollToTopOfTable() {
             var btnCancel = row.querySelector('.js-btn-cancel');
             var btnDelete = row.querySelector('.js-btn-delete');
 
-            if (btnEdit) {
-                btnEdit.addEventListener('click', function () {
-                    if (editingRow && editingRow !== row) {
-                        resetRowValues(editingRow);
-                        setRowEditMode(editingRow, false);
-                    }
-
-                    editingRow = row;
-                    setRowEditMode(row, true);
-
-                    var firstInput = row.querySelector('.js-cell-input');
-                    if (firstInput) {
-                        firstInput.focus();
-                        firstInput.select();
-                    }
-                });
-            }
-
-            if (btnCancel) {
-                btnCancel.addEventListener('click', function () {
-                    resetRowValues(row);
-                    setRowEditMode(row, false);
-                    editingRow = null;
-                    renderPagination();
-                });
-            }
-
-            if (btnSave) {
-                btnSave.addEventListener('click', function () {
-                    saveRowAjax(row);
-                });
-            }
-
-            if (btnDelete) {
-                btnDelete.addEventListener('click', function () {
-                    deleteRowAjax(row);
-                });
-            }
-
-            var inputs = row.querySelectorAll('.js-cell-input');
-            for (var i = 0; i < inputs.length; i++) {
-                inputs[i].addEventListener('input', function () {
-                    renderPagination();
-                });
-            }
+            if (btnEdit) btnEdit.addEventListener('click', function () {
+                if (editingRow && editingRow !== row) {
+                    resetRowValues(editingRow);
+                    setRowEditMode(editingRow, false);
+                }
+                editingRow = row;
+                setRowEditMode(row, true);
+                var firstInput = row.querySelector('.js-cell-input');
+                if (firstInput) { firstInput.focus(); firstInput.select(); }
+            });
+            if (btnCancel) btnCancel.addEventListener('click', function () {
+                resetRowValues(row);
+                setRowEditMode(row, false);
+                editingRow = null;
+            });
+            if (btnSave) btnSave.addEventListener('click', function () { saveRowAjax(row); });
+            if (btnDelete) btnDelete.addEventListener('click', function () { deleteRowAjax(row); });
         }
 
         function showCreatePanel() {
             if (!createPanel) return;
             createPanel.style.display = '';
             var firstInput = createPanel.querySelector('input[type="text"]');
-            if (firstInput) {
-                setTimeout(function () {
-                    firstInput.focus();
-                }, 50);
-            }
+            if (firstInput) setTimeout(function () { firstInput.focus(); }, 50);
         }
-
         function hideCreatePanel() {
-            if (!createPanel) return;
-            createPanel.style.display = 'none';
+            if (createPanel) createPanel.style.display = 'none';
         }
 
         function openImportModal() {
@@ -1020,37 +657,26 @@ function scrollToTopOfTable() {
             importModal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
-
         function closeImportModal() {
             if (!importModal) return;
             importModal.style.display = 'none';
             document.body.style.overflow = '';
         }
-
         function updateImportType() {
             if (!importTypeSelect) return;
             var type = importTypeSelect.value;
             if (importExcelBox) importExcelBox.style.display = type === 'excel' ? '' : 'none';
             if (importJsonBox) importJsonBox.style.display = type === 'json' ? '' : 'none';
         }
-
         function downloadExcelTemplate() {
-            var fields = getCategoryFields();
-            if (!fields.length) {
-                alert('Chưa có field để tạo file mẫu.');
-                return;
-            }
-
-            var headerLine = [];
-            for (var i = 0; i < fields.length; i++) {
-                headerLine.push(fields[i].ma_truong);
-            }
-
-            var csvContent = '\ufeff' + headerLine.join(',') + '\n';
+            var headers = [];
+            var ths = document.querySelectorAll('thead th code');
+            for (var i = 0; i < ths.length; i++) headers.push(ths[i].textContent || '');
+            if (!headers.length) { alert('Chưa có field để tạo file mẫu.'); return; }
+            var csvContent = '\ufeff' + headers.join(',') + '\n';
             var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
-
             a.href = url;
             a.download = 'mau_import_danh_muc.csv';
             document.body.appendChild(a);
@@ -1068,336 +694,145 @@ function scrollToTopOfTable() {
             if (syncCaptchaImage) syncCaptchaImage.innerHTML = '';
             if (syncCaptchaValue) syncCaptchaValue.value = '';
         }
-
         function closeSyncModal() {
             if (!syncModal) return;
             syncModal.style.display = 'none';
             document.body.style.overflow = '';
         }
-
         function setSyncMessage(text) {
             if (syncMessageBox) syncMessageBox.textContent = text || '';
         }
-
         function showCaptcha(html) {
             if (syncCaptchaBox) syncCaptchaBox.style.display = '';
             if (syncCaptchaImage) syncCaptchaImage.innerHTML = html || '';
-            if (syncCaptchaValue) {
-                syncCaptchaValue.value = '';
-                syncCaptchaValue.focus();
-            }
+            if (syncCaptchaValue) { syncCaptchaValue.value = ''; syncCaptchaValue.focus(); }
         }
-
         function startSync() {
             setSyncMessage('Đang kiểm tra phiên đăng nhập và thực hiện đồng bộ...');
-
-            fetch('/categories/{{ item.id }}/datasets/{{ dataset.id }}/sync', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(function (res) {
-                    return res.json().then(function (data) {
-                        return { ok: res.ok, data: data };
-                    });
-                })
+            fetch('{{ sync_post_url }}', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
-                    if (!result.ok) {
-                        throw new Error(result.data.error || 'Đồng bộ thất bại.');
-                    }
-
+                    if (!result.ok) throw new Error(result.data.error || 'Đồng bộ thất bại.');
                     if (result.data.need_login) {
                         setSyncMessage('Phiên BHYT đã hết hạn. Vui lòng nhập captcha để đăng nhập.');
                         showCaptcha(result.data.captcha_html || '');
                         return;
                     }
-
                     if (result.data.success) {
                         alert(result.data.message || 'Đồng bộ thành công.');
-                        window.location.reload();
+                        window.location.href = result.data.redirect_url || window.location.pathname;
                         return;
                     }
-
                     throw new Error(result.data.error || 'Đồng bộ thất bại.');
                 })
-                .catch(function (err) {
-                    alert(err.message || 'Có lỗi xảy ra khi đồng bộ.');
-                });
+                .catch(function (err) { alert(err.message || 'Có lỗi xảy ra khi đồng bộ.'); });
         }
-
         function submitSyncLogin() {
             var captcha = syncCaptchaValue ? syncCaptchaValue.value.trim() : '';
-            if (!captcha) {
-                alert('Vui lòng nhập captcha.');
-                return;
-            }
-
+            if (!captcha) { alert('Vui lòng nhập captcha.'); return; }
             setSyncMessage('Đang đăng nhập BHYT...');
-
-            fetch('/categories/{{ item.id }}/datasets/{{ dataset.id }}/sync-login', {
+            fetch('{{ sync_login_url }}', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    captcha: captcha
-                })
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ captcha: captcha })
             })
-                .then(function (res) {
-                    return res.json().then(function (data) {
-                        return { ok: res.ok, data: data };
-                    });
-                })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
-                    if (!result.ok || !result.data.success) {
-                        throw new Error(result.data.error || 'Đăng nhập thất bại.');
-                    }
-
+                    if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Đăng nhập thất bại.');
                     setSyncMessage('Đăng nhập thành công. Đang đồng bộ lại...');
                     if (syncCaptchaBox) syncCaptchaBox.style.display = 'none';
                     startSync();
                 })
-                .catch(function (err) {
-                    alert(err.message || 'Có lỗi xảy ra khi đăng nhập.');
-                });
-        }
-
-        function updateRecordCount() {
-            var count = getAllRows().length;
-            var filtered = getFilteredRows().length;
-            var el = document.getElementById('record-count-text');
-            if (el) {
-                el.textContent = 'Tổng số: ' + count + ' dòng';
-                if (filtered !== count) {
-                    el.textContent += ' | Sau lọc: ' + filtered + ' dòng';
-                }
-            }
+                .catch(function (err) { alert(err.message || 'Có lỗi xảy ra khi đăng nhập.'); });
         }
 
         function buildFilterOptionsHtml() {
-            var fields = getCategoryFields();
             var html = '<option value="">-- Chọn header --</option>';
-
-            for (var i = 0; i < fields.length; i++) {
-                html += '<option value="' + escapeHtml(fields[i].id) + '">' + escapeHtml(fields[i].ma_truong) + '</option>';
-            }
-
+            {% for f in fields %}
+            html += '<option value="{{ f.id }}">{{ f.ma_truong|replace("'", "\\'") }}</option>';
+            {% endfor %}
             return html;
-        }
-
-        function bindFilterRow(row) {
-            var fieldSelect = row.querySelector('.js-filter-field');
-            var valueInput = row.querySelector('.js-filter-value');
-            var removeBtn = row.querySelector('.js-remove-filter-btn');
-
-            if (fieldSelect) {
-                fieldSelect.addEventListener('change', function () {
-                    currentPage = 1;
-                    renderPagination();
-                    updateRecordCount();
-                });
-            }
-
-            if (valueInput) {
-                valueInput.addEventListener('input', function () {
-                    currentPage = 1;
-                    renderPagination();
-                    updateRecordCount();
-                });
-            }
-
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function () {
-                    row.remove();
-                    currentPage = 1;
-                    renderPagination();
-                    updateRecordCount();
-                });
-            }
         }
 
         function addFilterRow(defaultFieldId, defaultValue) {
             if (!filterRowsWrap) return;
-
             var row = document.createElement('div');
             row.className = 'filter-row';
-
             row.innerHTML = ''
-                + '<select class="js-filter-field">'
-                + buildFilterOptionsHtml()
-                + '</select>'
-                + '<input type="text" class="js-filter-value" placeholder="Nhập giá trị cần lọc...">'
+                + '<select class="js-filter-field" name="filter_field_id">' + buildFilterOptionsHtml() + '</select>'
+                + '<input type="text" class="js-filter-value" name="filter_value" placeholder="Nhập giá trị lọc">'
                 + '<button type="button" class="btn btn-danger js-remove-filter-btn">Xóa</button>';
-
             filterRowsWrap.appendChild(row);
-
-            var fieldSelect = row.querySelector('.js-filter-field');
-            var valueInput = row.querySelector('.js-filter-value');
-
-            if (fieldSelect && defaultFieldId) {
-                fieldSelect.value = String(defaultFieldId);
-            }
-
-            if (valueInput && defaultValue != null) {
-                valueInput.value = defaultValue;
-            }
-
+            if (defaultFieldId) row.querySelector('.js-filter-field').value = defaultFieldId;
+            if (defaultValue) row.querySelector('.js-filter-value').value = defaultValue;
             bindFilterRow(row);
         }
 
+        function bindFilterRow(row) {
+            var removeBtn = row.querySelector('.js-remove-filter-btn');
+            if (removeBtn) removeBtn.addEventListener('click', function () {
+                var rows = filterRowsWrap.querySelectorAll('.filter-row');
+                if (rows.length <= 1) {
+                    var field = row.querySelector('.js-filter-field');
+                    var value = row.querySelector('.js-filter-value');
+                    if (field) field.value = '';
+                    if (value) value.value = '';
+                    return;
+                }
+                row.remove();
+            });
+        }
+
         function clearAllFilters() {
-            if (filterRowsWrap) {
-                filterRowsWrap.innerHTML = '';
-            }
-            currentPage = 1;
-            renderPagination();
-            updateRecordCount();
+            if (!filterRowsWrap) return;
+            filterRowsWrap.innerHTML = '';
+            addFilterRow('', '');
         }
 
-        var rows = document.querySelectorAll('.js-edit-row');
-        for (var i = 0; i < rows.length; i++) {
-            bindRow(rows[i]);
+        if (tableBody) {
+            var rows = tableBody.querySelectorAll('.js-edit-row');
+            for (var i = 0; i < rows.length; i++) bindRow(rows[i]);
         }
 
-        if (createForm) {
-            createForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                createRecordAjax(createForm);
-            });
-        }
+        if (createForm) createForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var formData = new FormData(createForm);
+            fetch(window.location.pathname + window.location.search, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Lỗi khi thêm dữ liệu.');
+                    window.location.href = result.data.redirect_url || (window.location.pathname + window.location.search);
+                })
+                .catch(function (err) { alert(err.message || 'Có lỗi xảy ra khi thêm dữ liệu.'); });
+        });
 
-        if (toggleCreateBtn) {
-            toggleCreateBtn.addEventListener('click', function () {
-                if (!createPanel) return;
-                if (createPanel.style.display === 'none' || createPanel.style.display === '') {
-                    if (createPanel.style.display === 'none') {
-                        showCreatePanel();
-                    } else {
-                        hideCreatePanel();
-                    }
-                } else {
-                    hideCreatePanel();
-                }
-            });
+        if (toggleCreateBtn) toggleCreateBtn.addEventListener('click', showCreatePanel);
+        if (closeCreateBtn) closeCreateBtn.addEventListener('click', hideCreatePanel);
+        if (openImportBtn) openImportBtn.addEventListener('click', openImportModal);
+        if (closeImportBtn) closeImportBtn.addEventListener('click', closeImportModal);
+        if (importModal) importModal.addEventListener('click', function (e) { if (e.target === importModal) closeImportModal(); });
+        if (importTypeSelect) { importTypeSelect.addEventListener('change', updateImportType); updateImportType(); }
+        if (downloadTemplateBtn) downloadTemplateBtn.addEventListener('click', downloadExcelTemplate);
+        if (openSyncBtn) openSyncBtn.addEventListener('click', openSyncModal);
+        if (closeSyncBtn) closeSyncBtn.addEventListener('click', closeSyncModal);
+        if (syncModal) syncModal.addEventListener('click', function (e) { if (e.target === syncModal) closeSyncModal(); });
+        if (startSyncBtn) startSyncBtn.addEventListener('click', startSync);
+        if (submitSyncLoginBtn) submitSyncLoginBtn.addEventListener('click', submitSyncLogin);
+        if (addFilterBtn) addFilterBtn.addEventListener('click', function () { addFilterRow('', ''); });
+        if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearAllFilters);
+        if (filterRowsWrap) {
+            var filterRows = filterRowsWrap.querySelectorAll('.filter-row');
+            for (var j = 0; j < filterRows.length; j++) bindFilterRow(filterRows[j]);
         }
-
-        if (closeCreateBtn) {
-            closeCreateBtn.addEventListener('click', function () {
-                hideCreatePanel();
-            });
+        if (pageSizeSelect && pageSizeForm) pageSizeSelect.addEventListener('change', function () { pageSizeForm.submit(); });
+        var shouldScrollTable = (new URLSearchParams(window.location.search)).get("scroll_table") === "1";
+        if (shouldScrollTable) {
+            scrollToTopOfTable();
         }
-
-        if (openImportBtn) {
-            openImportBtn.addEventListener('click', function () {
-                openImportModal();
-            });
-        }
-
-        if (closeImportBtn) {
-            closeImportBtn.addEventListener('click', function () {
-                closeImportModal();
-            });
-        }
-
-        if (importModal) {
-            importModal.addEventListener('click', function (e) {
-                if (e.target === importModal) {
-                    closeImportModal();
-                }
-            });
-        }
-
-        if (importTypeSelect) {
-            importTypeSelect.addEventListener('change', function () {
-                updateImportType();
-            });
-            updateImportType();
-        }
-
-        if (downloadTemplateBtn) {
-            downloadTemplateBtn.addEventListener('click', function () {
-                downloadExcelTemplate();
-            });
-        }
-
-        if (openSyncBtn) {
-            openSyncBtn.addEventListener('click', function () {
-                openSyncModal();
-            });
-        }
-
-        if (closeSyncBtn) {
-            closeSyncBtn.addEventListener('click', function () {
-                closeSyncModal();
-            });
-        }
-
-        if (syncModal) {
-            syncModal.addEventListener('click', function (e) {
-                if (e.target === syncModal) {
-                    closeSyncModal();
-                }
-            });
-        }
-
-        if (startSyncBtn) {
-            startSyncBtn.addEventListener('click', function () {
-                startSync();
-            });
-        }
-
-        if (submitSyncLoginBtn) {
-            submitSyncLoginBtn.addEventListener('click', function () {
-                submitSyncLogin();
-            });
-        }
-
-        if (prevPageBtn) {
-            prevPageBtn.addEventListener('click', function () {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderPagination();
-                    scrollToTopOfTable();
-                }
-            });
-        }
-
-        if (nextPageBtn) {
-            nextPageBtn.addEventListener('click', function () {
-                var totalRows = getFilteredRows().length;
-                var totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderPagination();
-                    scrollToTopOfTable();
-                }
-            });
-        }
-
-        if (pageSizeSelect) {
-            pageSizeSelect.addEventListener('change', function () {
-                pageSize = parseInt(pageSizeSelect.value, 10) || 50;
-                currentPage = 1;
-                renderPagination();
-                scrollToTopOfTable();
-            });
-        }
-
-        if (addFilterBtn) {
-            addFilterBtn.addEventListener('click', function () {
-                addFilterRow('', '');
-            });
-        }
-
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', function () {
-                clearAllFilters();
-            });
-        }
-
-        refreshTableState();
     })();
 </script>
 {% endblock %}

@@ -12,7 +12,18 @@ class DanhMuc(db.Model):
     # UNIT: danh mục riêng -> dữ liệu nằm theo từng bộ dữ liệu đơn vị
     scope = db.Column(db.String(20), nullable=False, default="COMMON")
 
-    # API đồng bộ, chỉ dùng cho danh mục riêng
+    # Cấu hình đồng bộ
+    api_danh_muc_url = db.Column(db.String(1000), nullable=True)
+    api_tong_hop_url = db.Column(db.String(1000), nullable=True)
+    api_tim_kiem_url = db.Column(db.String(1000), nullable=True)
+    api_tim_kiem_body = db.Column(db.Text, nullable=True)
+    api_xuat_file_url = db.Column(db.String(1000), nullable=True)
+
+    # Với danh mục chung, chọn 1 đơn vị làm gốc để dùng tài khoản/cookie đồng bộ
+    sync_don_vi_id = db.Column(db.Integer, db.ForeignKey("don_vi.id"), nullable=True)
+    sync_don_vi = db.relationship("DonVi", foreign_keys=[sync_don_vi_id])
+
+    # Giữ lại các cột cũ để tương thích dữ liệu cũ, không dùng nữa
     api_sync_url = db.Column(db.String(1000), nullable=True)
     api_ft_timkiem_body = db.Column(db.Text, nullable=True)
 
