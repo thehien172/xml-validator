@@ -6,11 +6,10 @@
     <h1 class="page-title">Dữ liệu danh mục: {{ item.ten_danh_muc }}</h1>
     <div class="page-subtitle">
         {% if dataset %}
-            Bộ dữ liệu:
-            <strong>{{ dataset.ten_bo_du_lieu }}</strong>
-            {% if dataset.don_vi %} - {{ dataset.don_vi.ten_don_vi }}{% endif %}
+        <strong>{{ dataset.ten_bo_du_lieu }}</strong>
+        {% if dataset.don_vi %} - {{ dataset.don_vi.ten_don_vi }}{% endif %}
         {% else %}
-            Quản lý dữ liệu danh mục dùng chung. Có thể thêm tay hoặc import JSON / Excel.
+        Quản lý dữ liệu danh mục dùng chung. Có thể thêm tay hoặc import JSON / Excel.
         {% endif %}
     </div>
 </div>
@@ -24,138 +23,197 @@
 <div class="card">
     <div class="records-toolbar">
         <div class="records-toolbar__left">
-            <h2 class="card-title" style="margin-bottom: 0;">Danh sách dữ liệu</h2>
+            <div>
+                <h2 class="card-title" style="margin-bottom: 0;">Danh sách dữ liệu</h2>
+                <div class="muted" id="record-count-text">
+                    Tổng số: {{ record_rows|length if record_rows else 0 }} dòng
+                </div>
+            </div>
         </div>
 
         <div class="records-toolbar__right">
             {% if fields %}
-                <button type="button" class="btn btn-secondary" id="toggle-create-form-btn">+ Thêm dòng</button>
-                <button type="button" class="btn btn-primary" id="open-import-modal-btn">Import</button>
+            <button type="button" class="btn btn-secondary" id="toggle-create-form-btn">+ Thêm dòng</button>
+            <button type="button" class="btn btn-primary" id="open-import-modal-btn">Import</button>
+
+            {% if record_rows %}
+            {% if item.scope == 'UNIT' %}
+            <form method="POST" action="/categories/{{ item.id }}/datasets/{{ dataset.id }}/records/clear"
+                style="display:inline;"
+                onsubmit="return confirm('Xóa toàn bộ dữ liệu của bộ dữ liệu này? Header/field sẽ được giữ nguyên.');">
+                <button type="submit" class="btn btn-danger">Xóa tất cả</button>
+            </form>
+            {% else %}
+            <form method="POST" action="/categories/{{ item.id }}/records/clear" style="display:inline;"
+                onsubmit="return confirm('Xóa toàn bộ dữ liệu của danh mục này? Header/field sẽ được giữ nguyên.');">
+                <button type="submit" class="btn btn-danger">Xóa tất cả</button>
+            </form>
+            {% endif %}
+            {% endif %}
+
+            {% if item.scope == 'UNIT' and dataset and item.api_sync_url %}
+            <button type="button" class="btn btn-primary" id="open-sync-modal-btn">Đồng bộ</button>
+            {% endif %}
             {% endif %}
 
             {% if item.scope == 'UNIT' %}
-                <a href="/categories/{{ item.id }}/datasets" class="btn btn-secondary">Quay lại</a>
+            <a href="/categories/{{ item.id }}/datasets" class="btn btn-secondary">Quay lại</a>
             {% else %}
-                <a href="/categories" class="btn btn-secondary">Danh mục</a>
+            <a href="/categories" class="btn btn-secondary">Danh mục</a>
             {% endif %}
         </div>
     </div>
 
     {% if fields %}
-        <div id="create-record-panel" class="create-panel" style="display:none;">
-            <div class="create-panel__header">
-                <h3 class="create-panel__title">Thêm tay 1 dòng dữ liệu</h3>
-                <button type="button" class="btn btn-secondary" id="close-create-form-btn">Đóng</button>
+    <div id="create-record-panel" class="create-panel" style="display:none;">
+        <div class="create-panel__header">
+            <h3 class="create-panel__title">Thêm tay 1 dòng dữ liệu</h3>
+            <button type="button" class="btn btn-secondary" id="close-create-form-btn">Đóng</button>
+        </div>
+
+        <form id="create-record-form">
+            <input type="hidden" name="action" value="create_manual">
+
+            <div class="grid">
+                {% for f in fields %}
+                <div class="col-6">
+                    <label><code>{{ f.ma_truong }}</code></label>
+                    <input type="text" name="field_{{ f.id }}" placeholder="{{ f.ma_truong }}">
+                </div>
+                {% endfor %}
             </div>
 
-            <form id="create-record-form">
-                <input type="hidden" name="action" value="create_manual">
+            <div class="actions" style="margin-top: 12px;">
+                <button type="submit" class="btn btn-primary">Lưu dòng mới</button>
+            </div>
+        </form>
+    </div>
 
-                <div class="grid">
+    <div class="filter-panel">
+        <div class="filter-panel__header">
+            <div>
+                <h3 class="filter-panel__title">Bộ lọc dữ liệu</h3>
+                <div class="muted">Có thể thêm nhiều điều kiện lọc cùng lúc. Hiện tại áp dụng logic AND.</div>
+            </div>
+            <div class="actions" style="margin-top:0;">
+                <button type="button" class="btn btn-secondary" id="add-filter-btn">+ Thêm điều kiện lọc</button>
+                <button type="button" class="btn btn-secondary" id="clear-filters-btn">Xóa bộ lọc</button>
+            </div>
+        </div>
+
+        <div id="filter-rows"></div>
+    </div>
+
+    {% if record_rows %}
+    <div class="table-wrap" id="records-table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:90px;">STT</th>
                     {% for f in fields %}
-                    <div class="col-6">
-                        <label><code>{{ f.ma_truong }}</code></label>
-                        <input
-                            type="text"
-                            name="field_{{ f.id }}"
-                            placeholder="{{ f.ma_truong }}"
-                        >
-                    </div>
+                    <th data-field-id="{{ f.id }}" data-field-code="{{ f.ma_truong }}">
+                        <code>{{ f.ma_truong }}</code>
+                    </th>
                     {% endfor %}
-                </div>
+                    <th style="width:160px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="records-tbody">
+                {% for row in record_rows %}
+                <tr class="js-edit-row" data-record-id="{{ row.record.id }}">
+                    <td><strong class="js-record-id">{{ loop.index }}</strong></td>
 
-                <div class="actions" style="margin-top: 12px;">
-                    <button type="submit" class="btn btn-primary">Lưu dòng mới</button>
-                </div>
-            </form>
-        </div>
-
-        {% if record_rows %}
-        <div class="table-wrap" id="records-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:90px;">ID dòng</th>
-                        {% for f in fields %}
-                        <th
-                            data-field-id="{{ f.id }}"
-                            data-field-code="{{ f.ma_truong }}"
-                        >
-                            <code>{{ f.ma_truong }}</code>
-                        </th>
-                        {% endfor %}
-                        <th style="width:320px;">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody id="records-tbody">
-                    {% for row in record_rows %}
-                    <tr class="js-edit-row" data-record-id="{{ row.record.id }}">
-                        <td><strong class="js-record-id">{{ row.record.id }}</strong></td>
-
-                        {% for cell in row.cells %}
-                        <td
-                            class="js-edit-cell"
-                            data-field-id="{{ fields[loop.index0].id }}"
-                            data-field-code="{{ fields[loop.index0].ma_truong }}"
-                            data-original="{{ cell|e }}"
-                        >
-                            <span class="js-cell-text">{{ cell }}</span>
-                            <input
-                                type="text"
-                                class="js-cell-input"
-                                name="field_{{ fields[loop.index0].id }}"
-                                value="{{ cell }}"
-                                placeholder="{{ fields[loop.index0].ma_truong }}"
-                                style="display:none; min-width:130px;"
-                            >
-                        </td>
-                        {% endfor %}
-
-                        <td>
-                            <div class="actions actions-center">
-                                <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>
-                                <button type="button" class="btn btn-danger js-btn-delete">Xóa</button>
-                                <button type="button" class="btn btn-primary js-btn-save" style="display:none;">Lưu</button>
-                                <button type="button" class="btn btn-secondary js-btn-cancel" style="display:none;">Hủy</button>
-                            </div>
-                        </td>
-                    </tr>
+                    {% for cell in row.cells %}
+                    <td class="js-edit-cell" data-field-id="{{ fields[loop.index0].id }}"
+                        data-field-code="{{ fields[loop.index0].ma_truong }}" data-original="{{ cell|e }}">
+                        <span class="js-cell-text">{{ cell }}</span>
+                        <input type="text" class="js-cell-input" name="field_{{ fields[loop.index0].id }}"
+                            value="{{ cell }}" placeholder="{{ fields[loop.index0].ma_truong }}"
+                            style="display:none; min-width:130px;">
+                    </td>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state" id="records-empty-state">
-            Chưa có dữ liệu trong bộ dữ liệu này.
+
+                    <td>
+                        <div class="actions actions-center">
+                            <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>
+                            <button type="button" class="btn btn-danger js-btn-delete">Xóa</button>
+                            <button type="button" class="btn btn-primary js-btn-save" style="display:none;">Lưu</button>
+                            <button type="button" class="btn btn-secondary js-btn-cancel"
+                                style="display:none;">Hủy</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-pagination" id="table-pagination">
+        <div class="table-pagination__left">
+            <label for="page-size-select">Hiển thị</label>
+            <select id="page-size-select">
+                <option value="10">10</option>
+                <option value="50" selected>50</option>
+                <option value="200">200</option>
+                <option value="1000">1000</option>
+            </select>
+            <!-- <span>dòng / trang</span> -->
         </div>
 
-        <div class="table-wrap" id="records-table-wrap" style="display:none;">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:90px;">ID dòng</th>
-                        {% for f in fields %}
-                        <th
-                            data-field-id="{{ f.id }}"
-                            data-field-code="{{ f.ma_truong }}"
-                        >
-                            <code>{{ f.ma_truong }}</code>
-                        </th>
-                        {% endfor %}
-                        <th style="width:320px;">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody id="records-tbody"></tbody>
-            </table>
+        <div class="table-pagination__right">
+            <button type="button" class="btn btn-secondary" id="prev-page-btn">Trang trước</button>
+            <span class="muted" id="pagination-info">Trang 1 / 1</span>
+            <button type="button" class="btn btn-secondary" id="next-page-btn">Trang sau</button>
         </div>
-        {% endif %}
+    </div>
     {% else %}
-        <div class="empty-state">
-            Danh mục chưa có field. Vui lòng tạo field trước.
-            <div class="actions actions-center" style="margin-top: 12px;">
-                <a href="/categories/{{ item.id }}/fields" class="btn btn-primary">Danh sách field</a>
-            </div>
+    <div class="empty-state" id="records-empty-state">
+        Chưa có dữ liệu trong bộ dữ liệu này.
+    </div>
+
+    <div class="table-wrap" id="records-table-wrap" style="display:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:90px;">STT</th>
+                    {% for f in fields %}
+                    <th data-field-id="{{ f.id }}" data-field-code="{{ f.ma_truong }}">
+                        <code>{{ f.ma_truong }}</code>
+                    </th>
+                    {% endfor %}
+                    <th style="width:160px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="records-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="table-pagination" id="table-pagination" style="display:none;">
+        <div class="table-pagination__left">
+            <label for="page-size-select">Hiển thị</label>
+            <select id="page-size-select">
+                <option value="10">10</option>
+                <option value="50" selected>50</option>
+                <option value="200">200</option>
+                <option value="1000">1000</option>
+            </select>
+            <span>dòng / trang</span>
         </div>
+
+        <div class="table-pagination__right">
+            <button type="button" class="btn btn-secondary" id="prev-page-btn">Trang trước</button>
+            <span class="muted" id="pagination-info">Trang 1 / 1</span>
+            <button type="button" class="btn btn-secondary" id="next-page-btn">Trang sau</button>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+        Danh mục chưa có field. Vui lòng tạo field trước.
+        <div class="actions actions-center" style="margin-top: 12px;">
+            <a href="/categories/{{ item.id }}/fields" class="btn btn-primary">Danh sách field</a>
+        </div>
+    </div>
     {% endif %}
 </div>
 
@@ -182,7 +240,8 @@
                 <div class="col-6">
                     <label>Tải file mẫu</label>
                     <div class="actions" style="margin-top: 0;">
-                        <button type="button" class="btn btn-secondary" id="download-template-btn">Tải file mẫu Excel</button>
+                        <button type="button" class="btn btn-secondary" id="download-template-btn">Tải file mẫu
+                            Excel</button>
                     </div>
                 </div>
             </div>
@@ -209,9 +268,7 @@
                     <input type="hidden" name="action" value="import_json">
 
                     <label>Nội dung JSON</label>
-                    <textarea
-                        name="json_text"
-                        placeholder='Ví dụ:
+                    <textarea name="json_text" placeholder='Ví dụ:
 [
   {
     "ma_bac_si": "BS01",
@@ -221,8 +278,7 @@
     "ma_bac_si": "BS02",
     "ten_bac_si": "Tran Van B"
   }
-]'
-                    ></textarea>
+]'></textarea>
 
                     <div class="muted" style="margin-top:8px;">
                         Key JSON phải trùng với mã field.
@@ -236,520 +292,1112 @@
         </div>
     </div>
 </div>
+
+{% if item.scope == 'UNIT' and dataset and item.api_sync_url %}
+<div class="modal-overlay" id="sync-modal" style="display:none;">
+    <div class="modal-card" style="max-width: 700px;">
+        <div class="modal-card__header">
+            <div>
+                <h3 class="modal-card__title">Đồng bộ danh mục</h3>
+                <div class="muted">Nếu cookie BHYT còn hiệu lực thì hệ thống sẽ đồng bộ ngay. Nếu hết hạn sẽ yêu cầu
+                    nhập captcha để đăng nhập.</div>
+            </div>
+            <button type="button" class="btn btn-secondary" id="close-sync-modal-btn">Đóng</button>
+        </div>
+
+        <div class="modal-card__body">
+            <div id="sync-message-box" class="muted" style="margin-bottom: 12px;"></div>
+
+            <div id="sync-captcha-box" style="display:none;">
+                <label>Captcha</label>
+                <div id="sync-captcha-image" style="margin-bottom: 12px;"></div>
+                <input type="text" id="sync-captcha-value" placeholder="Nhập captcha">
+                <div class="actions" style="margin-top: 12px;">
+                    <button type="button" class="btn btn-primary" id="submit-sync-login-btn">Đăng nhập</button>
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top: 8px;">
+                <button type="button" class="btn btn-primary" id="start-sync-btn">Bắt đầu đồng bộ</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endif %}
 
 <style>
-.records-toolbar {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-
-.records-toolbar__right {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.create-panel {
-    margin-bottom: 16px;
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fafafa;
-}
-
-.create-panel__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.create-panel__title {
-    margin: 0;
-    font-size: 16px;
-}
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.modal-card {
-    width: 100%;
-    max-width: 820px;
-    max-height: 90vh;
-    overflow: auto;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-    padding: 20px;
-}
-
-.modal-card__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.modal-card__title {
-    margin: 0 0 4px 0;
-    font-size: 18px;
-}
-
-.js-edit-row.is-editing {
-    background: #fff7ed;
-}
-
-@media (max-width: 768px) {
-    .modal-card {
-        max-width: 100%;
-        padding: 16px;
+    .records-toolbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
     }
-}
+
+    .records-toolbar__right {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .create-panel {
+        margin-bottom: 16px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fafafa;
+    }
+
+    .create-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .create-panel__title {
+        margin: 0;
+        font-size: 16px;
+    }
+
+    .filter-panel {
+        margin-bottom: 16px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .filter-panel__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .filter-panel__title {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+    }
+
+    .filter-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) minmax(180px, 1fr) auto;
+        gap: 8px;
+        margin-bottom: 8px;
+        align-items: center;
+    }
+
+    .filter-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: calc(100vh - 320px);
+        position: relative;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+    }
+
+    .table-wrap table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: #fff;
+    }
+
+    .table-wrap thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: #f8fafc;
+        box-shadow: 0 1px 0 #e5e7eb;
+        white-space: nowrap;
+    }
+
+    .table-wrap tbody td {
+        vertical-align: top;
+    }
+
+    .table-pagination {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .table-pagination__left,
+    .table-pagination__right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .table-pagination select {
+        min-width: 60px;
+        width: auto;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-card {
+        width: 100%;
+        max-width: 820px;
+        max-height: 90vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        padding: 20px;
+    }
+
+    .modal-card__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .modal-card__title {
+        margin: 0 0 4px 0;
+        font-size: 18px;
+    }
+
+    .js-edit-row.is-editing {
+        background: #fff7ed;
+    }
+
+    @media (max-width: 768px) {
+        .modal-card {
+            max-width: 100%;
+            padding: 16px;
+        }
+
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+
+        .table-wrap {
+            max-height: calc(100vh - 260px);
+        }
+    }
 </style>
 
 <script>
-(function () {
-    var editingRow = null;
-    var createForm = document.getElementById('create-record-form');
-    var tableBody = document.getElementById('records-tbody');
-    var emptyState = document.getElementById('records-empty-state');
-    var tableWrap = document.getElementById('records-table-wrap');
+    (function () {
+        var editingRow = null;
+        var createForm = document.getElementById('create-record-form');
+        var tableBody = document.getElementById('records-tbody');
+        var emptyState = document.getElementById('records-empty-state');
+        var tableWrap = document.getElementById('records-table-wrap');
 
-    var toggleCreateBtn = document.getElementById('toggle-create-form-btn');
-    var closeCreateBtn = document.getElementById('close-create-form-btn');
-    var createPanel = document.getElementById('create-record-panel');
+        var paginationWrap = document.getElementById('table-pagination');
+        var prevPageBtn = document.getElementById('prev-page-btn');
+        var nextPageBtn = document.getElementById('next-page-btn');
+        var paginationInfo = document.getElementById('pagination-info');
+        var pageSizeSelect = document.getElementById('page-size-select');
+        var currentPage = 1;
+        var pageSize = pageSizeSelect ? parseInt(pageSizeSelect.value, 10) || 50 : 50;
 
-    var openImportBtn = document.getElementById('open-import-modal-btn');
-    var closeImportBtn = document.getElementById('close-import-modal-btn');
-    var importModal = document.getElementById('import-modal');
-    var importTypeSelect = document.getElementById('import-type-select');
-    var importExcelBox = document.getElementById('import-excel-box');
-    var importJsonBox = document.getElementById('import-json-box');
-    var downloadTemplateBtn = document.getElementById('download-template-btn');
+        var filterRowsWrap = document.getElementById('filter-rows');
+        var addFilterBtn = document.getElementById('add-filter-btn');
+        var clearFiltersBtn = document.getElementById('clear-filters-btn');
 
-    function escapeHtml(value) {
-        return String(value == null ? '' : value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
+        var toggleCreateBtn = document.getElementById('toggle-create-form-btn');
+        var closeCreateBtn = document.getElementById('close-create-form-btn');
+        var createPanel = document.getElementById('create-record-panel');
 
-    function getCategoryFields() {
-        var fields = [];
-        var headers = document.querySelectorAll('thead th[data-field-id]');
-        for (var i = 0; i < headers.length; i++) {
-            fields.push({
-                id: headers[i].getAttribute('data-field-id'),
-                ma_truong: headers[i].getAttribute('data-field-code') || ''
+        var openImportBtn = document.getElementById('open-import-modal-btn');
+        var closeImportBtn = document.getElementById('close-import-modal-btn');
+        var importModal = document.getElementById('import-modal');
+        var importTypeSelect = document.getElementById('import-type-select');
+        var importExcelBox = document.getElementById('import-excel-box');
+        var importJsonBox = document.getElementById('import-json-box');
+        var downloadTemplateBtn = document.getElementById('download-template-btn');
+
+        var openSyncBtn = document.getElementById('open-sync-modal-btn');
+        var closeSyncBtn = document.getElementById('close-sync-modal-btn');
+        var syncModal = document.getElementById('sync-modal');
+        var startSyncBtn = document.getElementById('start-sync-btn');
+        var submitSyncLoginBtn = document.getElementById('submit-sync-login-btn');
+        var syncMessageBox = document.getElementById('sync-message-box');
+        var syncCaptchaBox = document.getElementById('sync-captcha-box');
+        var syncCaptchaImage = document.getElementById('sync-captcha-image');
+        var syncCaptchaValue = document.getElementById('sync-captcha-value');
+function scrollToTopOfTable() {
+            if (!tableWrap) return;
+
+            tableWrap.scrollTop = 0;
+
+            var rect = tableWrap.getBoundingClientRect();
+            var tableTop = rect.top + window.pageYOffset - 12;
+
+            window.scrollTo({
+                top: tableTop,
+                behavior: 'auto'
             });
         }
-        return fields;
-    }
-
-    function setRowEditMode(row, isEditing) {
-        var textEls = row.querySelectorAll('.js-cell-text');
-        var inputEls = row.querySelectorAll('.js-cell-input');
-        var btnEdit = row.querySelector('.js-btn-edit');
-        var btnDelete = row.querySelector('.js-btn-delete');
-        var btnSave = row.querySelector('.js-btn-save');
-        var btnCancel = row.querySelector('.js-btn-cancel');
-
-        for (var i = 0; i < textEls.length; i++) {
-            textEls[i].style.display = isEditing ? 'none' : '';
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
-        for (var j = 0; j < inputEls.length; j++) {
-            inputEls[j].style.display = isEditing ? '' : 'none';
+        function normalizeText(value) {
+            return String(value == null ? '' : value).trim().toLowerCase();
         }
 
-        if (btnEdit) btnEdit.style.display = isEditing ? 'none' : '';
-        if (btnDelete) btnDelete.style.display = isEditing ? 'none' : '';
-        if (btnSave) btnSave.style.display = isEditing ? '' : 'none';
-        if (btnCancel) btnCancel.style.display = isEditing ? '' : 'none';
-
-        if (isEditing) {
-            row.classList.add('is-editing');
-        } else {
-            row.classList.remove('is-editing');
-        }
-    }
-
-    function resetRowValues(row) {
-        var cells = row.querySelectorAll('.js-edit-cell');
-        for (var i = 0; i < cells.length; i++) {
-            var cell = cells[i];
-            var original = cell.getAttribute('data-original') || '';
-            var textEl = cell.querySelector('.js-cell-text');
-            var inputEl = cell.querySelector('.js-cell-input');
-
-            if (inputEl) inputEl.value = original;
-            if (textEl) textEl.textContent = original;
-        }
-    }
-
-    function getRowPayload(row) {
-        var formData = new FormData();
-        formData.append('action', 'update_record');
-        formData.append('record_id', row.getAttribute('data-record-id'));
-
-        var inputs = row.querySelectorAll('.js-cell-input');
-        for (var i = 0; i < inputs.length; i++) {
-            formData.append(inputs[i].name, inputs[i].value);
+        function getCategoryFields() {
+            var fields = [];
+            var headers = document.querySelectorAll('thead th[data-field-id]');
+            for (var i = 0; i < headers.length; i++) {
+                fields.push({
+                    id: headers[i].getAttribute('data-field-id'),
+                    ma_truong: headers[i].getAttribute('data-field-code') || ''
+                });
+            }
+            return fields;
         }
 
-        return formData;
-    }
+        function getAllRows() {
+            if (!tableBody) return [];
+            return Array.prototype.slice.call(tableBody.querySelectorAll('.js-edit-row'));
+        }
 
-    function saveRowAjax(row) {
-        var formData = getRowPayload(row);
+        function renumberVisibleRows() {
+            var rows = getFilteredRows();
+            for (var i = 0; i < rows.length; i++) {
+                var sttEl = rows[i].querySelector('.js-record-id');
+                if (sttEl) {
+                    sttEl.textContent = i + 1;
+                }
+            }
+        }
 
-        fetch(window.location.pathname, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(function (res) {
-            return res.json().then(function (data) {
-                return { ok: res.ok, data: data };
-            });
-        })
-        .then(function (result) {
-            if (!result.ok || !result.data.success) {
-                throw new Error(result.data.error || 'Lỗi khi lưu dữ liệu.');
+        function setRowEditMode(row, isEditing) {
+            var textEls = row.querySelectorAll('.js-cell-text');
+            var inputEls = row.querySelectorAll('.js-cell-input');
+            var btnEdit = row.querySelector('.js-btn-edit');
+            var btnDelete = row.querySelector('.js-btn-delete');
+            var btnSave = row.querySelector('.js-btn-save');
+            var btnCancel = row.querySelector('.js-btn-cancel');
+
+            for (var i = 0; i < textEls.length; i++) {
+                textEls[i].style.display = isEditing ? 'none' : '';
             }
 
+            for (var j = 0; j < inputEls.length; j++) {
+                inputEls[j].style.display = isEditing ? '' : 'none';
+            }
+
+            if (btnEdit) btnEdit.style.display = isEditing ? 'none' : '';
+            if (btnDelete) btnDelete.style.display = isEditing ? 'none' : '';
+            if (btnSave) btnSave.style.display = isEditing ? '' : 'none';
+            if (btnCancel) btnCancel.style.display = isEditing ? '' : 'none';
+
+            if (isEditing) {
+                row.classList.add('is-editing');
+            } else {
+                row.classList.remove('is-editing');
+            }
+        }
+
+        function resetRowValues(row) {
             var cells = row.querySelectorAll('.js-edit-cell');
             for (var i = 0; i < cells.length; i++) {
                 var cell = cells[i];
-                var inputEl = cell.querySelector('.js-cell-input');
+                var original = cell.getAttribute('data-original') || '';
                 var textEl = cell.querySelector('.js-cell-text');
-                var newValue = inputEl ? inputEl.value : '';
+                var inputEl = cell.querySelector('.js-cell-input');
 
-                if (textEl) textEl.textContent = newValue;
-                cell.setAttribute('data-original', newValue);
+                if (inputEl) inputEl.value = original;
+                if (textEl) textEl.textContent = original;
             }
-
-            setRowEditMode(row, false);
-            editingRow = null;
-        })
-        .catch(function (err) {
-            alert(err.message || 'Có lỗi xảy ra khi lưu.');
-        });
-    }
-
-    function deleteRowAjax(row) {
-        if (!confirm('Xóa dòng dữ liệu này?')) {
-            return;
         }
 
-        var formData = new FormData();
-        formData.append('action', 'delete_record');
-        formData.append('record_id', row.getAttribute('data-record-id'));
+        function getRowPayload(row) {
+            var formData = new FormData();
+            formData.append('action', 'update_record');
+            formData.append('record_id', row.getAttribute('data-record-id'));
 
-        fetch(window.location.pathname, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(function (res) {
-            return res.json().then(function (data) {
-                return { ok: res.ok, data: data };
-            });
-        })
-        .then(function (result) {
-            if (!result.ok || !result.data.success) {
-                throw new Error(result.data.error || 'Lỗi khi xóa dữ liệu.');
+            var inputs = row.querySelectorAll('.js-cell-input');
+            for (var i = 0; i < inputs.length; i++) {
+                formData.append(inputs[i].name, inputs[i].value);
             }
 
-            if (editingRow === row) {
-                editingRow = null;
+            return formData;
+        }
+
+        function getFilterConditions() {
+            if (!filterRowsWrap) return [];
+            var rows = filterRowsWrap.querySelectorAll('.filter-row');
+            var conditions = [];
+
+            for (var i = 0; i < rows.length; i++) {
+                var fieldSelect = rows[i].querySelector('.js-filter-field');
+                var valueInput = rows[i].querySelector('.js-filter-value');
+
+                if (!fieldSelect || !valueInput) continue;
+
+                var fieldId = fieldSelect.value;
+                var value = valueInput.value || '';
+
+                if (!fieldId || normalizeText(value) === '') {
+                    continue;
+                }
+
+                conditions.push({
+                    fieldId: fieldId,
+                    value: normalizeText(value)
+                });
             }
 
-            row.remove();
+            return conditions;
+        }
 
-            if (tableBody && tableBody.children.length === 0) {
-                if (tableWrap) tableWrap.style.display = 'none';
-                if (emptyState) emptyState.style.display = '';
+        function rowMatchesFilters(row, conditions) {
+            if (!conditions.length) return true;
+
+            for (var i = 0; i < conditions.length; i++) {
+                var condition = conditions[i];
+                var cell = row.querySelector('.js-edit-cell[data-field-id="' + condition.fieldId + '"]');
+                var cellText = '';
+
+                if (cell) {
+                    var textEl = cell.querySelector('.js-cell-text');
+                    var inputEl = cell.querySelector('.js-cell-input');
+
+                    if (row.classList.contains('is-editing') && inputEl) {
+                        cellText = inputEl.value || '';
+                    } else if (textEl) {
+                        cellText = textEl.textContent || '';
+                    } else {
+                        cellText = cell.getAttribute('data-original') || '';
+                    }
+                }
+
+                if (normalizeText(cellText).indexOf(condition.value) === -1) {
+                    return false;
+                }
             }
-        })
-        .catch(function (err) {
-            alert(err.message || 'Có lỗi xảy ra khi xóa.');
-        });
-    }
 
-    function createRowElement(recordId, cells) {
-        var tr = document.createElement('tr');
-        tr.className = 'js-edit-row';
-        tr.setAttribute('data-record-id', recordId);
+            return true;
+        }
 
-        var fields = getCategoryFields();
+        function getFilteredRows() {
+            var rows = getAllRows();
+            var conditions = getFilterConditions();
+            var filtered = [];
 
-        var html = '<td><strong class="js-record-id">' + escapeHtml(recordId) + '</strong></td>';
+            for (var i = 0; i < rows.length; i++) {
+                if (rowMatchesFilters(rows[i], conditions)) {
+                    filtered.push(rows[i]);
+                }
+            }
 
-        for (var i = 0; i < fields.length; i++) {
-            var field = fields[i];
-            var cellValue = cells[i] == null ? '' : String(cells[i]);
+            return filtered;
+        }
+
+        function renderPagination() {
+            var allRows = getAllRows();
+            var filteredRows = getFilteredRows();
+            var totalFiltered = filteredRows.length;
+            var totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+            if (currentPage > totalPages) {
+                currentPage = totalPages;
+            }
+            if (currentPage < 1) {
+                currentPage = 1;
+            }
+
+            var start = (currentPage - 1) * pageSize;
+            var end = start + pageSize;
+
+            for (var i = 0; i < allRows.length; i++) {
+                allRows[i].style.display = 'none';
+            }
+
+            for (var j = 0; j < filteredRows.length; j++) {
+                filteredRows[j].style.display = (j >= start && j < end) ? '' : 'none';
+            }
+
+            renumberVisibleRows();
+
+            if (paginationInfo) {
+                paginationInfo.textContent = 'Trang ' + currentPage + ' / ' + totalPages + ' - ' + totalFiltered + ' dòng';
+            }
+
+            if (prevPageBtn) {
+                prevPageBtn.disabled = currentPage <= 1 || totalFiltered === 0;
+            }
+
+            if (nextPageBtn) {
+                nextPageBtn.disabled = currentPage >= totalPages || totalFiltered === 0;
+            }
+
+            if (paginationWrap) {
+                paginationWrap.style.display = getAllRows().length > 0 ? '' : 'none';
+            }
+        }
+
+        function refreshTableState(options) {
+            options = options || {};
+            updateRecordCount();
+
+            if (options.goToLastPage) {
+                var filteredCount = getFilteredRows().length;
+                currentPage = Math.max(1, Math.ceil(filteredCount / pageSize));
+            } else {
+                currentPage = 1;
+            }
+
+            renderPagination();
+            scrollToTopOfTable();
+        }
+
+        function saveRowAjax(row) {
+            var formData = getRowPayload(row);
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.error || 'Lỗi khi lưu dữ liệu.');
+                    }
+
+                    var cells = row.querySelectorAll('.js-edit-cell');
+                    for (var i = 0; i < cells.length; i++) {
+                        var cell = cells[i];
+                        var inputEl = cell.querySelector('.js-cell-input');
+                        var textEl = cell.querySelector('.js-cell-text');
+                        var newValue = inputEl ? inputEl.value : '';
+
+                        if (textEl) textEl.textContent = newValue;
+                        cell.setAttribute('data-original', newValue);
+                    }
+
+                    setRowEditMode(row, false);
+                    editingRow = null;
+                    renderPagination();
+                })
+                .catch(function (err) {
+                    alert(err.message || 'Có lỗi xảy ra khi lưu.');
+                });
+        }
+
+        function deleteRowAjax(row) {
+            if (!confirm('Xóa dòng dữ liệu này?')) {
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'delete_record');
+            formData.append('record_id', row.getAttribute('data-record-id'));
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.error || 'Lỗi khi xóa dữ liệu.');
+                    }
+
+                    if (editingRow === row) {
+                        editingRow = null;
+                    }
+
+                    row.remove();
+
+                    if (tableBody && tableBody.children.length === 0) {
+                        if (tableWrap) tableWrap.style.display = 'none';
+                        if (emptyState) emptyState.style.display = '';
+                    }
+
+                    refreshTableState();
+                })
+                .catch(function (err) {
+                    alert(err.message || 'Có lỗi xảy ra khi xóa.');
+                });
+        }
+
+        function createRowElement(recordId, cells) {
+            var tr = document.createElement('tr');
+            tr.className = 'js-edit-row';
+            tr.setAttribute('data-record-id', recordId);
+
+            var fields = getCategoryFields();
+
+            var html = '<td><strong class="js-record-id"></strong></td>';
+
+            for (var i = 0; i < fields.length; i++) {
+                var field = fields[i];
+                var cellValue = cells[i] == null ? '' : String(cells[i]);
+
+                html += ''
+                    + '<td class="js-edit-cell"'
+                    + ' data-field-id="' + escapeHtml(field.id) + '"'
+                    + ' data-field-code="' + escapeHtml(field.ma_truong) + '"'
+                    + ' data-original="' + escapeHtml(cellValue) + '">'
+                    + '   <span class="js-cell-text">' + escapeHtml(cellValue) + '</span>'
+                    + '   <input'
+                    + '       type="text"'
+                    + '       class="js-cell-input"'
+                    + '       name="field_' + escapeHtml(field.id) + '"'
+                    + '       value="' + escapeHtml(cellValue) + '"'
+                    + '       placeholder="' + escapeHtml(field.ma_truong) + '"'
+                    + '       style="display:none; min-width:130px;"'
+                    + '   >'
+                    + '</td>';
+            }
 
             html += ''
-                + '<td class="js-edit-cell"'
-                + ' data-field-id="' + escapeHtml(field.id) + '"'
-                + ' data-field-code="' + escapeHtml(field.ma_truong) + '"'
-                + ' data-original="' + escapeHtml(cellValue) + '">'
-                + '   <span class="js-cell-text">' + escapeHtml(cellValue) + '</span>'
-                + '   <input'
-                + '       type="text"'
-                + '       class="js-cell-input"'
-                + '       name="field_' + escapeHtml(field.id) + '"'
-                + '       value="' + escapeHtml(cellValue) + '"'
-                + '       placeholder="' + escapeHtml(field.ma_truong) + '"'
-                + '       style="display:none; min-width:130px;"'
-                + '   >'
+                + '<td>'
+                + '    <div class="actions actions-center">'
+                + '        <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>'
+                + '        <button type="button" class="btn btn-danger js-btn-delete">Xóa</button>'
+                + '        <button type="button" class="btn btn-primary js-btn-save" style="display:none;">Lưu</button>'
+                + '        <button type="button" class="btn btn-secondary js-btn-cancel" style="display:none;">Hủy</button>'
+                + '    </div>'
                 + '</td>';
+
+            tr.innerHTML = html;
+            bindRow(tr);
+            return tr;
         }
 
-        html += ''
-            + '<td>'
-            + '    <div class="actions actions-center">'
-            + '        <button type="button" class="btn btn-secondary js-btn-edit">Sửa</button>'
-            + '        <button type="button" class="btn btn-danger js-btn-delete">Xóa</button>'
-            + '        <button type="button" class="btn btn-primary js-btn-save" style="display:none;">Lưu</button>'
-            + '        <button type="button" class="btn btn-secondary js-btn-cancel" style="display:none;">Hủy</button>'
-            + '    </div>'
-            + '</td>';
+        function createRecordAjax(form) {
+            var formData = new FormData(form);
 
-        tr.innerHTML = html;
-        bindRow(tr);
-        return tr;
-    }
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.error || 'Lỗi khi thêm dữ liệu.');
+                    }
 
-    function createRecordAjax(form) {
-        var formData = new FormData(form);
+                    var row = createRowElement(result.data.record_id, result.data.cells || []);
+                    if (tableBody) {
+                        tableBody.appendChild(row);
+                    }
 
-        fetch(window.location.pathname, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        })
-        .then(function (res) {
-            return res.json().then(function (data) {
-                return { ok: res.ok, data: data };
-            });
-        })
-        .then(function (result) {
-            if (!result.ok || !result.data.success) {
-                throw new Error(result.data.error || 'Lỗi khi thêm dữ liệu.');
+                    if (tableWrap) tableWrap.style.display = '';
+                    if (emptyState) emptyState.style.display = 'none';
+
+                    form.reset();
+                    hideCreatePanel();
+                    refreshTableState({ goToLastPage: true });
+                })
+                .catch(function (err) {
+                    alert(err.message || 'Có lỗi xảy ra khi thêm dữ liệu.');
+                });
+        }
+
+        function bindRow(row) {
+            var btnEdit = row.querySelector('.js-btn-edit');
+            var btnSave = row.querySelector('.js-btn-save');
+            var btnCancel = row.querySelector('.js-btn-cancel');
+            var btnDelete = row.querySelector('.js-btn-delete');
+
+            if (btnEdit) {
+                btnEdit.addEventListener('click', function () {
+                    if (editingRow && editingRow !== row) {
+                        resetRowValues(editingRow);
+                        setRowEditMode(editingRow, false);
+                    }
+
+                    editingRow = row;
+                    setRowEditMode(row, true);
+
+                    var firstInput = row.querySelector('.js-cell-input');
+                    if (firstInput) {
+                        firstInput.focus();
+                        firstInput.select();
+                    }
+                });
             }
 
-            var row = createRowElement(result.data.record_id, result.data.cells || []);
-            if (tableBody) {
-                tableBody.appendChild(row);
+            if (btnCancel) {
+                btnCancel.addEventListener('click', function () {
+                    resetRowValues(row);
+                    setRowEditMode(row, false);
+                    editingRow = null;
+                    renderPagination();
+                });
             }
 
-            if (tableWrap) tableWrap.style.display = '';
-            if (emptyState) emptyState.style.display = 'none';
+            if (btnSave) {
+                btnSave.addEventListener('click', function () {
+                    saveRowAjax(row);
+                });
+            }
 
-            form.reset();
-            hideCreatePanel();
-        })
-        .catch(function (err) {
-            alert(err.message || 'Có lỗi xảy ra khi thêm dữ liệu.');
-        });
-    }
+            if (btnDelete) {
+                btnDelete.addEventListener('click', function () {
+                    deleteRowAjax(row);
+                });
+            }
 
-    function bindRow(row) {
-        var btnEdit = row.querySelector('.js-btn-edit');
-        var btnSave = row.querySelector('.js-btn-save');
-        var btnCancel = row.querySelector('.js-btn-cancel');
-        var btnDelete = row.querySelector('.js-btn-delete');
-
-        if (btnEdit) {
-            btnEdit.addEventListener('click', function () {
-                if (editingRow && editingRow !== row) {
-                    resetRowValues(editingRow);
-                    setRowEditMode(editingRow, false);
-                }
-
-                editingRow = row;
-                setRowEditMode(row, true);
-
-                var firstInput = row.querySelector('.js-cell-input');
-                if (firstInput) {
-                    firstInput.focus();
-                    firstInput.select();
-                }
-            });
+            var inputs = row.querySelectorAll('.js-cell-input');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].addEventListener('input', function () {
+                    renderPagination();
+                });
+            }
         }
 
-        if (btnCancel) {
-            btnCancel.addEventListener('click', function () {
-                resetRowValues(row);
-                setRowEditMode(row, false);
-                editingRow = null;
-            });
-        }
-
-        if (btnSave) {
-            btnSave.addEventListener('click', function () {
-                saveRowAjax(row);
-            });
-        }
-
-        if (btnDelete) {
-            btnDelete.addEventListener('click', function () {
-                deleteRowAjax(row);
-            });
-        }
-    }
-
-    function showCreatePanel() {
-        if (!createPanel) return;
-        createPanel.style.display = '';
-        var firstInput = createPanel.querySelector('input[type="text"]');
-        if (firstInput) {
-            setTimeout(function () {
-                firstInput.focus();
-            }, 50);
-        }
-    }
-
-    function hideCreatePanel() {
-        if (!createPanel) return;
-        createPanel.style.display = 'none';
-    }
-
-    function openImportModal() {
-        if (!importModal) return;
-        importModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeImportModal() {
-        if (!importModal) return;
-        importModal.style.display = 'none';
-        document.body.style.overflow = '';
-    }
-
-    function updateImportType() {
-        if (!importTypeSelect) return;
-        var type = importTypeSelect.value;
-        if (importExcelBox) importExcelBox.style.display = type === 'excel' ? '' : 'none';
-        if (importJsonBox) importJsonBox.style.display = type === 'json' ? '' : 'none';
-    }
-
-    function downloadExcelTemplate() {
-        var fields = getCategoryFields();
-        if (!fields.length) {
-            alert('Chưa có field để tạo file mẫu.');
-            return;
-        }
-
-        var headerLine = [];
-        for (var i = 0; i < fields.length; i++) {
-            headerLine.push(fields[i].ma_truong);
-        }
-
-        var csvContent = '\ufeff' + headerLine.join(',') + '\n';
-        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-
-        a.href = url;
-        a.download = 'mau_import_danh_muc.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    var rows = document.querySelectorAll('.js-edit-row');
-    for (var i = 0; i < rows.length; i++) {
-        bindRow(rows[i]);
-    }
-
-    if (createForm) {
-        createForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            createRecordAjax(createForm);
-        });
-    }
-
-    if (toggleCreateBtn) {
-        toggleCreateBtn.addEventListener('click', function () {
+        function showCreatePanel() {
             if (!createPanel) return;
-            if (createPanel.style.display === 'none' || createPanel.style.display === '') {
-                if (createPanel.style.display === 'none') {
-                    showCreatePanel();
+            createPanel.style.display = '';
+            var firstInput = createPanel.querySelector('input[type="text"]');
+            if (firstInput) {
+                setTimeout(function () {
+                    firstInput.focus();
+                }, 50);
+            }
+        }
+
+        function hideCreatePanel() {
+            if (!createPanel) return;
+            createPanel.style.display = 'none';
+        }
+
+        function openImportModal() {
+            if (!importModal) return;
+            importModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImportModal() {
+            if (!importModal) return;
+            importModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function updateImportType() {
+            if (!importTypeSelect) return;
+            var type = importTypeSelect.value;
+            if (importExcelBox) importExcelBox.style.display = type === 'excel' ? '' : 'none';
+            if (importJsonBox) importJsonBox.style.display = type === 'json' ? '' : 'none';
+        }
+
+        function downloadExcelTemplate() {
+            var fields = getCategoryFields();
+            if (!fields.length) {
+                alert('Chưa có field để tạo file mẫu.');
+                return;
+            }
+
+            var headerLine = [];
+            for (var i = 0; i < fields.length; i++) {
+                headerLine.push(fields[i].ma_truong);
+            }
+
+            var csvContent = '\ufeff' + headerLine.join(',') + '\n';
+            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+
+            a.href = url;
+            a.download = 'mau_import_danh_muc.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function openSyncModal() {
+            if (!syncModal) return;
+            syncModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            if (syncMessageBox) syncMessageBox.textContent = '';
+            if (syncCaptchaBox) syncCaptchaBox.style.display = 'none';
+            if (syncCaptchaImage) syncCaptchaImage.innerHTML = '';
+            if (syncCaptchaValue) syncCaptchaValue.value = '';
+        }
+
+        function closeSyncModal() {
+            if (!syncModal) return;
+            syncModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function setSyncMessage(text) {
+            if (syncMessageBox) syncMessageBox.textContent = text || '';
+        }
+
+        function showCaptcha(html) {
+            if (syncCaptchaBox) syncCaptchaBox.style.display = '';
+            if (syncCaptchaImage) syncCaptchaImage.innerHTML = html || '';
+            if (syncCaptchaValue) {
+                syncCaptchaValue.value = '';
+                syncCaptchaValue.focus();
+            }
+        }
+
+        function startSync() {
+            setSyncMessage('Đang kiểm tra phiên đăng nhập và thực hiện đồng bộ...');
+
+            fetch('/categories/{{ item.id }}/datasets/{{ dataset.id }}/sync', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok) {
+                        throw new Error(result.data.error || 'Đồng bộ thất bại.');
+                    }
+
+                    if (result.data.need_login) {
+                        setSyncMessage('Phiên BHYT đã hết hạn. Vui lòng nhập captcha để đăng nhập.');
+                        showCaptcha(result.data.captcha_html || '');
+                        return;
+                    }
+
+                    if (result.data.success) {
+                        alert(result.data.message || 'Đồng bộ thành công.');
+                        window.location.reload();
+                        return;
+                    }
+
+                    throw new Error(result.data.error || 'Đồng bộ thất bại.');
+                })
+                .catch(function (err) {
+                    alert(err.message || 'Có lỗi xảy ra khi đồng bộ.');
+                });
+        }
+
+        function submitSyncLogin() {
+            var captcha = syncCaptchaValue ? syncCaptchaValue.value.trim() : '';
+            if (!captcha) {
+                alert('Vui lòng nhập captcha.');
+                return;
+            }
+
+            setSyncMessage('Đang đăng nhập BHYT...');
+
+            fetch('/categories/{{ item.id }}/datasets/{{ dataset.id }}/sync-login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    captcha: captcha
+                })
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        throw new Error(result.data.error || 'Đăng nhập thất bại.');
+                    }
+
+                    setSyncMessage('Đăng nhập thành công. Đang đồng bộ lại...');
+                    if (syncCaptchaBox) syncCaptchaBox.style.display = 'none';
+                    startSync();
+                })
+                .catch(function (err) {
+                    alert(err.message || 'Có lỗi xảy ra khi đăng nhập.');
+                });
+        }
+
+        function updateRecordCount() {
+            var count = getAllRows().length;
+            var filtered = getFilteredRows().length;
+            var el = document.getElementById('record-count-text');
+            if (el) {
+                el.textContent = 'Tổng số: ' + count + ' dòng';
+                if (filtered !== count) {
+                    el.textContent += ' | Sau lọc: ' + filtered + ' dòng';
+                }
+            }
+        }
+
+        function buildFilterOptionsHtml() {
+            var fields = getCategoryFields();
+            var html = '<option value="">-- Chọn header --</option>';
+
+            for (var i = 0; i < fields.length; i++) {
+                html += '<option value="' + escapeHtml(fields[i].id) + '">' + escapeHtml(fields[i].ma_truong) + '</option>';
+            }
+
+            return html;
+        }
+
+        function bindFilterRow(row) {
+            var fieldSelect = row.querySelector('.js-filter-field');
+            var valueInput = row.querySelector('.js-filter-value');
+            var removeBtn = row.querySelector('.js-remove-filter-btn');
+
+            if (fieldSelect) {
+                fieldSelect.addEventListener('change', function () {
+                    currentPage = 1;
+                    renderPagination();
+                    updateRecordCount();
+                });
+            }
+
+            if (valueInput) {
+                valueInput.addEventListener('input', function () {
+                    currentPage = 1;
+                    renderPagination();
+                    updateRecordCount();
+                });
+            }
+
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function () {
+                    row.remove();
+                    currentPage = 1;
+                    renderPagination();
+                    updateRecordCount();
+                });
+            }
+        }
+
+        function addFilterRow(defaultFieldId, defaultValue) {
+            if (!filterRowsWrap) return;
+
+            var row = document.createElement('div');
+            row.className = 'filter-row';
+
+            row.innerHTML = ''
+                + '<select class="js-filter-field">'
+                + buildFilterOptionsHtml()
+                + '</select>'
+                + '<input type="text" class="js-filter-value" placeholder="Nhập giá trị cần lọc...">'
+                + '<button type="button" class="btn btn-danger js-remove-filter-btn">Xóa</button>';
+
+            filterRowsWrap.appendChild(row);
+
+            var fieldSelect = row.querySelector('.js-filter-field');
+            var valueInput = row.querySelector('.js-filter-value');
+
+            if (fieldSelect && defaultFieldId) {
+                fieldSelect.value = String(defaultFieldId);
+            }
+
+            if (valueInput && defaultValue != null) {
+                valueInput.value = defaultValue;
+            }
+
+            bindFilterRow(row);
+        }
+
+        function clearAllFilters() {
+            if (filterRowsWrap) {
+                filterRowsWrap.innerHTML = '';
+            }
+            currentPage = 1;
+            renderPagination();
+            updateRecordCount();
+        }
+
+        var rows = document.querySelectorAll('.js-edit-row');
+        for (var i = 0; i < rows.length; i++) {
+            bindRow(rows[i]);
+        }
+
+        if (createForm) {
+            createForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                createRecordAjax(createForm);
+            });
+        }
+
+        if (toggleCreateBtn) {
+            toggleCreateBtn.addEventListener('click', function () {
+                if (!createPanel) return;
+                if (createPanel.style.display === 'none' || createPanel.style.display === '') {
+                    if (createPanel.style.display === 'none') {
+                        showCreatePanel();
+                    } else {
+                        hideCreatePanel();
+                    }
                 } else {
                     hideCreatePanel();
                 }
-            } else {
+            });
+        }
+
+        if (closeCreateBtn) {
+            closeCreateBtn.addEventListener('click', function () {
                 hideCreatePanel();
-            }
-        });
-    }
+            });
+        }
 
-    if (closeCreateBtn) {
-        closeCreateBtn.addEventListener('click', function () {
-            hideCreatePanel();
-        });
-    }
+        if (openImportBtn) {
+            openImportBtn.addEventListener('click', function () {
+                openImportModal();
+            });
+        }
 
-    if (openImportBtn) {
-        openImportBtn.addEventListener('click', function () {
-            openImportModal();
-        });
-    }
-
-    if (closeImportBtn) {
-        closeImportBtn.addEventListener('click', function () {
-            closeImportModal();
-        });
-    }
-
-    if (importModal) {
-        importModal.addEventListener('click', function (e) {
-            if (e.target === importModal) {
+        if (closeImportBtn) {
+            closeImportBtn.addEventListener('click', function () {
                 closeImportModal();
-            }
-        });
-    }
+            });
+        }
 
-    if (importTypeSelect) {
-        importTypeSelect.addEventListener('change', function () {
+        if (importModal) {
+            importModal.addEventListener('click', function (e) {
+                if (e.target === importModal) {
+                    closeImportModal();
+                }
+            });
+        }
+
+        if (importTypeSelect) {
+            importTypeSelect.addEventListener('change', function () {
+                updateImportType();
+            });
             updateImportType();
-        });
-        updateImportType();
-    }
+        }
 
-    if (downloadTemplateBtn) {
-        downloadTemplateBtn.addEventListener('click', function () {
-            downloadExcelTemplate();
-        });
-    }
-})();
+        if (downloadTemplateBtn) {
+            downloadTemplateBtn.addEventListener('click', function () {
+                downloadExcelTemplate();
+            });
+        }
+
+        if (openSyncBtn) {
+            openSyncBtn.addEventListener('click', function () {
+                openSyncModal();
+            });
+        }
+
+        if (closeSyncBtn) {
+            closeSyncBtn.addEventListener('click', function () {
+                closeSyncModal();
+            });
+        }
+
+        if (syncModal) {
+            syncModal.addEventListener('click', function (e) {
+                if (e.target === syncModal) {
+                    closeSyncModal();
+                }
+            });
+        }
+
+        if (startSyncBtn) {
+            startSyncBtn.addEventListener('click', function () {
+                startSync();
+            });
+        }
+
+        if (submitSyncLoginBtn) {
+            submitSyncLoginBtn.addEventListener('click', function () {
+                submitSyncLogin();
+            });
+        }
+
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', function () {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPagination();
+                    scrollToTopOfTable();
+                }
+            });
+        }
+
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', function () {
+                var totalRows = getFilteredRows().length;
+                var totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPagination();
+                    scrollToTopOfTable();
+                }
+            });
+        }
+
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', function () {
+                pageSize = parseInt(pageSizeSelect.value, 10) || 50;
+                currentPage = 1;
+                renderPagination();
+                scrollToTopOfTable();
+            });
+        }
+
+        if (addFilterBtn) {
+            addFilterBtn.addEventListener('click', function () {
+                addFilterRow('', '');
+            });
+        }
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', function () {
+                clearAllFilters();
+            });
+        }
+
+        refreshTableState();
+    })();
 </script>
 {% endblock %}

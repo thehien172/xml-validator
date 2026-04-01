@@ -23,9 +23,15 @@ class DonVi(db.Model):
     api_username = db.Column(db.String(100))
     api_password = db.Column(db.String(100))
 
-    # ✅ BHYT (mới thêm)
+    # BHYT login
     bhyt_username = db.Column(db.String(100))
     bhyt_password = db.Column(db.String(100))
+
+    # cookie BHYT
+    bhyt_aspxauth = db.Column(db.Text)
+    bhyt_aspnet_session_id = db.Column(db.String(255))
+    bhyt_bigipserver = db.Column(db.String(255))
+    bhyt_ts015ef943 = db.Column(db.String(255))
 
     api_base_url = db.Column(db.String(255))
     api_uuid = db.Column(db.Text)

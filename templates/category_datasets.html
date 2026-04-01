@@ -4,9 +4,7 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">Dữ liệu theo đơn vị: {{ item.ten_danh_muc }}</h1>
-    <!-- <div class="page-subtitle">
-        Danh mục riêng chỉ chọn 1 lần trong rule detail. Khi validate, engine sẽ tự map đơn vị để lấy bộ dữ liệu tương ứng.
-    </div> -->
+    <div class="page-subtitle">Phân cấp thao tác: Danh mục riêng → Bộ dữ liệu đơn vị → Dữ liệu chi tiết / Import / Đồng bộ.</div>
 </div>
 
 {% if error %}
@@ -31,11 +29,6 @@
                     {% endfor %}
                 </select>
             </div>
-
-            <!-- <div class="col-6">
-                <label>Tên bộ dữ liệu</label>
-                <input type="text" name="ten_bo_du_lieu" placeholder="Ví dụ: Bộ dữ liệu mã bác sĩ BV A">
-            </div> -->
         </div>
 
         <div class="actions">
@@ -47,7 +40,15 @@
 </div>
 
 <div class="card">
-    <h2 class="card-title">Danh sách dữ liệu theo đơn vị</h2>
+    <div class="list-header">
+        <div>
+            <h2 class="card-title" style="margin-bottom: 4px;">Danh sách bộ dữ liệu</h2>
+            <div class="muted">Sau khi vào từng đơn vị, có thể thêm tay, import hoặc đồng bộ từ API BHYT.</div>
+        </div>
+        {% if item.api_sync_url %}
+        <div class="sync-hint">API đồng bộ đã cấu hình</div>
+        {% endif %}
+    </div>
 
     {% if datasets %}
     <div class="table-wrap">
@@ -56,7 +57,6 @@
                 <tr>
                     <th style="width:80px;">STT</th>
                     <th>Đơn vị</th>
-                    <!-- <th>Tên bộ dữ liệu</th> -->
                     <th style="width:240px;">Thao tác</th>
                 </tr>
             </thead>
@@ -65,7 +65,6 @@
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>{{ ds.don_vi.ten_don_vi if ds.don_vi else '-' }}</td>
-                    <!-- <td>{{ ds.ten_bo_du_lieu }}</td> -->
                     <td>
                         <div class="actions actions-center">
                             <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets/{{ ds.id }}/records">Xem dữ liệu</a>
@@ -83,4 +82,23 @@
     <div class="empty-state">Chưa có dữ liệu theo đơn vị nào.</div>
     {% endif %}
 </div>
+
+<style>
+.list-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.sync-hint {
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #155e75;
+    font-size: 13px;
+}
+</style>
 {% endblock %}

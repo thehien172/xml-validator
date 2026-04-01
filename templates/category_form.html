@@ -2,6 +2,11 @@
 {% block title %}{% if item %}Sửa danh mục{% else %}Tạo danh mục{% endif %}{% endblock %}
 
 {% block content %}
+<style>
+    .grid-block{
+        display: block;
+    }
+</style>
 <div class="page-header">
     <h1 class="page-title">{% if item %}Sửa danh mục{% else %}Tạo danh mục{% endif %}</h1>
     <div class="page-subtitle">Khai báo danh mục chung hoặc danh mục riêng theo đơn vị.</div>
@@ -16,20 +21,32 @@
         <div class="grid">
             <div class="col-6">
                 <label>Tên danh mục</label>
-                <input
-                    type="text"
-                    name="ten_danh_muc"
-                    value="{{ item.ten_danh_muc if item else '' }}"
-                    placeholder="Ví dụ: Danh mục mã bác sĩ"
-                >
+                <input type="text" name="ten_danh_muc" value="{{ item.ten_danh_muc if item else '' }}"
+                    placeholder="Ví dụ: Danh mục mã bác sĩ">
             </div>
 
             <div class="col-6">
                 <label>Phạm vi</label>
                 <select name="scope" id="scope">
-                    <option value="COMMON" {% if item and item.scope == 'COMMON' %}selected{% endif %}>Danh mục chung</option>
-                    <option value="UNIT" {% if item and item.scope == 'UNIT' %}selected{% endif %}>Danh mục riêng</option>
+                    <option value="COMMON" {% if item and item.scope=='COMMON' %}selected{% endif %}>Danh mục chung
+                    </option>
+                    <option value="UNIT" {% if item and item.scope=='UNIT' %}selected{% endif %}>Danh mục riêng</option>
                 </select>
+            </div>
+        </div>
+
+        <div class="grid grid-block" id="sync-api-row"
+            style="margin-top: 8px; {% if not item or item.scope != 'UNIT' %}display:none;{% endif %}">
+            <div class="col-12">
+                <label>API đồng bộ</label>
+                <input type="text" name="api_sync_url" value="{{ item.api_sync_url if item else '' }}">
+            </div>
+        </div>
+        <div class="grid grid-block" id="sync-api-row"
+            style="margin-top: 8px; {% if not item or item.scope != 'UNIT' %}display:none;{% endif %}">
+            <div class="col-12">
+                <label>Body API ft_timkiem</label>
+                <input type="text" name="api_ft_timkiem_body" value="{{ item.api_ft_timkiem_body if item else '' }}">
             </div>
         </div>
 
@@ -45,4 +62,21 @@
         </div>
     </form>
 </div>
+
+<script>
+    (function () {
+        var scopeEl = document.getElementById('scope');
+        var syncApiRow = document.getElementById('sync-api-row');
+
+        function updateSyncApiVisibility() {
+            if (!scopeEl || !syncApiRow) return;
+            syncApiRow.style.display = scopeEl.value === 'UNIT' ? '' : 'none';
+        }
+
+        if (scopeEl) {
+            scopeEl.addEventListener('change', updateSyncApiVisibility);
+            updateSyncApiVisibility();
+        }
+    })();
+</script>
 {% endblock %}

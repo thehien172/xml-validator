@@ -12,6 +12,10 @@ class DanhMuc(db.Model):
     # UNIT: danh mục riêng -> dữ liệu nằm theo từng bộ dữ liệu đơn vị
     scope = db.Column(db.String(20), nullable=False, default="COMMON")
 
+    # API đồng bộ, chỉ dùng cho danh mục riêng
+    api_sync_url = db.Column(db.String(1000), nullable=True)
+    api_ft_timkiem_body = db.Column(db.Text, nullable=True)
+
     fields = db.relationship(
         "DanhMucField",
         back_populates="danh_muc",
@@ -29,6 +33,7 @@ class DanhMuc(db.Model):
     def __repr__(self):
         return f"<DanhMuc {self.ten_danh_muc}>"
 
+
 class DanhMucField(db.Model):
     __tablename__ = "danh_muc_field"
 
@@ -42,6 +47,7 @@ class DanhMucField(db.Model):
     __table_args__ = (
         db.UniqueConstraint("danh_muc_id", "ma_truong", name="uq_dm_field"),
     )
+
 
 class DanhMucDataset(db.Model):
     __tablename__ = "danh_muc_dataset"

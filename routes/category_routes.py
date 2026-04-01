@@ -15,6 +15,15 @@ from models import (
     DanhMucDataset
 )
 
+from services.bhyt_service import (
+    check_bhyt_root_status,
+    refresh_bhyt_captcha,
+    login_bhyt,
+    post_sync_export,
+    get_sync_stream,
+    clear_dataset_records,
+)
+
 category_bp = Blueprint("category_bp", __name__, url_prefix="/categories")
 
 
@@ -37,9 +46,14 @@ def list_categories():
 
     items = query.order_by(DanhMuc.id.asc()).all()
 
+    common_items = [x for x in items if (x.scope or "").upper() == "COMMON"]
+    unit_items = [x for x in items if (x.scope or "").upper() == "UNIT"]
+
     return render_template(
         "categories.html",
         items=items,
+        common_items=common_items,
+        unit_items=unit_items,
         keyword=keyword,
         scope=scope
     )
@@ -53,6 +67,8 @@ def create_category():
         try:
             ten_danh_muc = (request.form.get("ten_danh_muc") or "").strip()
             scope = (request.form.get("scope") or "COMMON").strip().upper()
+            api_sync_url = (request.form.get("api_sync_url") or "").strip()
+            api_ft_timkiem_body = (request.form.get("api_ft_timkiem_body") or "").strip()
 
             if not ten_danh_muc:
                 raise ValueError("Vui lòng nhập tên danh mục.")
@@ -62,7 +78,9 @@ def create_category():
 
             item = DanhMuc(
                 ten_danh_muc=ten_danh_muc,
-                scope=scope
+                scope=scope,
+                api_sync_url=api_sync_url if scope == "UNIT" else None,
+                api_ft_timkiem_body=api_ft_timkiem_body if scope == "UNIT" else None
             )
             db.session.add(item)
             db.session.flush()
@@ -97,6 +115,8 @@ def edit_category(category_id):
         try:
             ten_danh_muc = (request.form.get("ten_danh_muc") or "").strip()
             scope = (request.form.get("scope") or "COMMON").strip().upper()
+            api_sync_url = (request.form.get("api_sync_url") or "").strip()
+            api_ft_timkiem_body = (request.form.get("api_ft_timkiem_body") or "").strip()
 
             if not ten_danh_muc:
                 raise ValueError("Vui lòng nhập tên danh mục.")
@@ -122,6 +142,8 @@ def edit_category(category_id):
 
             item.ten_danh_muc = ten_danh_muc
             item.scope = scope
+            item.api_sync_url = api_sync_url if scope == "UNIT" else None
+            item.api_ft_timkiem_body = api_ft_timkiem_body if scope == "UNIT" else None
 
             if scope == "COMMON":
                 get_or_create_common_dataset(item)
@@ -344,6 +366,178 @@ def manage_category_dataset_records(category_id, dataset_id):
     return handle_dataset_records(item=item, dataset=dataset)
 
 
+@category_bp.route("/<int:category_id>/datasets/<int:dataset_id>/records/clear", methods=["POST"])
+def clear_category_dataset_records(category_id, dataset_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    dataset = (
+        DanhMucDataset.query
+        .filter_by(id=dataset_id, danh_muc_id=item.id)
+        .first_or_404()
+    )
+
+    try:
+        clear_dataset_records(dataset)
+        db.session.commit()
+
+        return redirect(
+            url_for(
+                "category_bp.manage_category_dataset_records",
+                category_id=item.id,
+                dataset_id=dataset.id
+            )
+        )
+    except Exception as e:
+        db.session.rollback()
+        return redirect(
+            url_for(
+                "category_bp.manage_category_dataset_records",
+                category_id=item.id,
+                dataset_id=dataset.id,
+                error=str(e)
+            )
+        )
+
+
+@category_bp.route("/<int:category_id>/records/clear", methods=["POST"])
+def clear_category_records(category_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    if (item.scope or "COMMON").upper() == "UNIT":
+        return redirect(url_for("category_bp.manage_category_datasets", category_id=item.id))
+
+    dataset = get_or_create_common_dataset(item)
+
+    try:
+        clear_dataset_records(dataset)
+        db.session.commit()
+
+        return redirect(
+            url_for(
+                "category_bp.manage_category_records",
+                category_id=item.id
+            )
+        )
+    except Exception as e:
+        db.session.rollback()
+        return redirect(
+            url_for(
+                "category_bp.manage_category_records",
+                category_id=item.id,
+                error=str(e)
+            )
+        )
+
+
+@category_bp.route("/<int:category_id>/datasets/<int:dataset_id>/sync", methods=["POST"])
+def sync_category_dataset(category_id, dataset_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    dataset = (
+        DanhMucDataset.query
+        .filter_by(id=dataset_id, danh_muc_id=item.id)
+        .first_or_404()
+    )
+
+    if (item.scope or "").upper() != "UNIT":
+        return jsonify({"error": "Chỉ hỗ trợ đồng bộ cho danh mục riêng."}), 400
+
+    if not dataset.don_vi:
+        return jsonify({"error": "Bộ dữ liệu chưa gắn đơn vị."}), 400
+
+    if not item.api_sync_url:
+        return jsonify({"error": "Danh mục chưa cấu hình API đồng bộ."}), 400
+
+    try:
+        root_resp = check_bhyt_root_status(dataset.don_vi)
+
+        if root_resp.status_code == 200:
+            captcha_html = refresh_bhyt_captcha(dataset.don_vi)
+            return jsonify({
+                "need_login": True,
+                "captcha_html": captcha_html
+            })
+
+        if root_resp.status_code != 302:
+            raise ValueError(f"Không kiểm tra được trạng thái đăng nhập BHYT. HTTP {root_resp.status_code}")
+
+        post_result = post_sync_export(dataset.don_vi, item)
+        post_data = post_result["data"]
+
+        if str(post_data.get("result")).upper() != "OK":
+            raise ValueError(f"API đồng bộ phản hồi không hợp lệ: {post_data}")
+
+        file_bytes = get_sync_stream(dataset.don_vi, item.api_sync_url)
+
+        fields = (
+            DanhMucField.query
+            .filter_by(danh_muc_id=item.id)
+            .order_by(DanhMucField.id.asc())
+            .all()
+        )
+
+        clear_dataset_records(dataset)
+        db.session.flush()
+
+        import_excel_rows(dataset, fields, file_bytes)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Đồng bộ thành công. Số bản ghi export: {post_data.get('countList', 'không rõ')}"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
+
+@category_bp.route("/<int:category_id>/datasets/<int:dataset_id>/sync-login", methods=["POST"])
+def sync_category_dataset_login(category_id, dataset_id):
+    item = DanhMuc.query.get_or_404(category_id)
+
+    dataset = (
+        DanhMucDataset.query
+        .filter_by(id=dataset_id, danh_muc_id=item.id)
+        .first_or_404()
+    )
+
+    if not dataset.don_vi:
+        return jsonify({"error": "Bộ dữ liệu chưa gắn đơn vị."}), 400
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        captcha = (payload.get("captcha") or "").strip()
+
+        if not captcha:
+            raise ValueError("Vui lòng nhập captcha.")
+
+        login_result = login_bhyt(dataset.don_vi, captcha)
+        data = login_result["data"]
+
+        if data.get("data") != 1:
+            if data.get("data") == -1:
+                raise ValueError("Sai tài khoản hoặc mật khẩu cổng BHYT.")
+            if data.get("data") == -2:
+                raise ValueError("Sai captcha.")
+            raise ValueError(f"Đăng nhập BHYT thất bại: {data}")
+
+        return jsonify({
+            "success": True,
+            "message": "Đăng nhập BHYT thành công."
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
+
 def handle_dataset_records(item, dataset):
     fields = (
         DanhMucField.query
@@ -351,7 +545,7 @@ def handle_dataset_records(item, dataset):
         .order_by(DanhMucField.id.asc())
         .all()
     )
-    error = None
+    error = request.args.get("error") or None
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if request.method == "POST":
@@ -543,7 +737,7 @@ def import_json_rows(dataset, fields, json_text):
             ))
 
 
-def import_excel_rows(dataset, fields, file_bytes):
+def import_excel_rows(dataset, fields, file_bytes, auto_create_fields=True):
     workbook = load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
     sheet = workbook.active
 
@@ -551,21 +745,85 @@ def import_excel_rows(dataset, fields, file_bytes):
     if not rows:
         raise ValueError("File Excel không có dữ liệu.")
 
-    headers = [str(x).strip() if x is not None else "" for x in rows[0]]
+    header_row_index = None
+    stt_col_index = None
+
+    for row_index, row in enumerate(rows):
+        for col_index, cell_value in enumerate(row):
+            cell_text = str(cell_value).strip().lower() if cell_value is not None else ""
+            if cell_text == "stt":
+                header_row_index = row_index
+                stt_col_index = col_index
+                break
+        if header_row_index is not None:
+            break
+
+    if header_row_index is None or stt_col_index is None:
+        raise ValueError("Không tìm thấy ô 'STT' để xác định bảng dữ liệu trong file Excel.")
+
+    header_row = rows[header_row_index]
+    headers = []
+    for cell_value in header_row[stt_col_index:]:
+        headers.append(str(cell_value).strip() if cell_value is not None else "")
+
     if not any(headers):
-        raise ValueError("Dòng đầu tiên của file Excel phải là tiêu đề cột.")
+        raise ValueError("Không đọc được dòng tiêu đề của bảng Excel.")
 
     field_map = build_field_map(fields)
 
-    for data_row in rows[1:]:
+    if auto_create_fields:
+        existing_keys = set(field_map.keys())
+
+        for header in headers:
+            header_text = (header or "").strip()
+            header_key = header_text.lower()
+
+            if not header_text:
+                continue
+
+            if header_key == "stt":
+                continue
+
+            if header_key not in existing_keys:
+                new_field = DanhMucField(
+                    danh_muc_id=dataset.danh_muc_id,
+                    ma_truong=header_text
+                )
+                db.session.add(new_field)
+                db.session.flush()
+
+                fields.append(new_field)
+                field_map[header_key] = new_field
+                existing_keys.add(header_key)
+
+    fields = (
+        DanhMucField.query
+        .filter_by(danh_muc_id=dataset.danh_muc_id)
+        .order_by(DanhMucField.id.asc())
+        .all()
+    )
+    field_map = build_field_map(fields)
+
+    for data_row in rows[header_row_index + 1:]:
         row_dict = {}
+        has_data = False
+
         for idx, header in enumerate(headers):
             if not header:
                 continue
-            value = data_row[idx] if idx < len(data_row) else None
+
+            source_col_index = stt_col_index + idx
+            value = data_row[source_col_index] if source_col_index < len(data_row) else None
+
+            if str(header).strip().lower() == "stt":
+                continue
+
+            if value is not None and str(value).strip() != "":
+                has_data = True
+
             row_dict[header] = value
 
-        if not row_dict:
+        if not has_data:
             continue
 
         record = DanhMucRecord(dataset_id=dataset.id)
