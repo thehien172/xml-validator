@@ -216,7 +216,9 @@ def post_sync_export(unit, api_config):
     export_url = normalize_sync_export_url(api_sync_url)
     parent_url = build_sync_parent_url(api_sync_url)
     warmup_sync_parent(unit, parent_url)
-    warmup_sync_ft_timkiem(unit, parent_url, api_ft_timkiem_body)
+
+    if api_ft_timkiem_body:
+        warmup_sync_ft_timkiem(unit, parent_url, api_ft_timkiem_body)
 
     resp = requests.post(
         export_url,
