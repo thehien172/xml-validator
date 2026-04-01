@@ -224,7 +224,12 @@
 
             NUMBER: [
                 "EQUAL", "NOT_EQUAL",
-                "BETWEEN", "NOT_BETWEEN"
+                "BETWEEN", "NOT_BETWEEN",
+                "IN_LIST", "NOT_IN_LIST"
+            ],
+            NUMBER_DIFF: [
+                "EQUAL", "NOT_EQUAL",
+                "IN_LIST", "NOT_IN_LIST"
             ],
 
             DATE_BASIC: [
@@ -256,14 +261,22 @@
 
             if (fieldType === "NUMBER") {
                 allowed = allowed.concat(CONDITION_GROUPS.NUMBER);
+
+                if (compareMode === "FIELD") {
+                    allowed = CONDITION_GROUPS.NUMBER_DIFF;
+                }
             }
 
             if (fieldType === "DATE") {
                 allowed = allowed.concat(CONDITION_GROUPS.DATE_BASIC);
 
-                if (compareMode === "FIELD") {
-                    allowed = allowed.concat(CONDITION_GROUPS.DATE_DIFF);
+                if (compareMode === "FIELD" || compareMode === "CATEGORY") {
+                    allowed = CONDITION_GROUPS.DATE_DIFF;
                 }
+            }
+
+            if(compareMode == "CATEGORY"){
+                allowed = allowed.filter(item => !["IS_NULL", "NOT_NULL", "EQUAL", "NOT_EQUAL", "CONTAINS", "NOT_CONTAINS"].includes(item));
             }
 
             Array.from(conditionSelect.options).forEach(opt => {
