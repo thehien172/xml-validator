@@ -11,12 +11,12 @@
     <h2 class="card-title">Thông tin rule</h2>
     <div class="card-subtitle">
         <strong>Thông báo:</strong> {{ rule.thong_bao }}<br>
-        <strong>Severity:</strong> {{ rule.severity }}<br>
+        <strong>Mức độ:</strong> {{ rule.severity }}<br>
         <strong>Phạm vi chạy:</strong>
         {% if rule.run_scope == 'ALL_HOSO' %}
-            Toàn bộ hồ sơ trong lần chạy
+            Liên hồ sơ
         {% else %}
-            Trong từng hồ sơ
+            Một hồ sơ
         {% endif %}
         <br>
         <strong>Phạm vi áp dụng:</strong>

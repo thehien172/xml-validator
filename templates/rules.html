@@ -84,11 +84,11 @@
             </div>
 
             <div class="col-4">
-                <label>Trạng thái rule</label>
+                <label>Trạng thái</label>
                 <select name="status">
                     <option value="">-- Tất cả --</option>
-                    <option value="active" {% if status == 'active' %}selected{% endif %}>Đang bật</option>
-                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Đang tắt</option>
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Áp dụng</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Không áp dụng</option>
                 </select>
             </div>
 
@@ -164,7 +164,7 @@
                         </td>
                         <td>
                             {% if r.run_scope == 'ALL_HOSO' %}
-                                <span">Tất cả hồ sơ</span>
+                                <span">Liên hồ sơ</span>
                             {% else %}
                                 <span>Một hồ sơ</span>
                             {% endif %}
@@ -185,7 +185,7 @@
                         </td>
                         <td>
                             <form class="status-toggle-form" method="POST" action="/rules/{{ r.id }}/toggle-status">
-                                <label class="status-switch" title="{% if r.is_active %}Đang bật{% else %}Đang tắt{% endif %}">
+                                <label class="status-switch" title="{% if r.is_active %}Áp dụng{% else %}Không áp dụng{% endif %}">
                                     <input
                                         type="checkbox"
                                         name="is_active"

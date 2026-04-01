@@ -22,8 +22,8 @@
 
         <label>Trạng thái</label>
         <select name="is_active">
-            <option value="1" {% if not item or item.is_active %}selected{% endif %}>Bật</option>
-            <option value="0" {% if item and not item.is_active %}selected{% endif %}>Tắt</option>
+            <option value="1" {% if not item or item.is_active %}selected{% endif %}>Áp dụng</option>
+            <option value="0" {% if item and not item.is_active %}selected{% endif %}>Không áp dụng</option>
         </select>
 
         <div class="actions">
