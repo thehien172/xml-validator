@@ -110,7 +110,7 @@ def create_category():
             error = str(e)
 
     return render_template(
-        "category_form.html",
+        "category/category_form.html",
         item=None,
         units=DonVi.query.order_by(DonVi.id.asc()).all(),
         error=error
@@ -175,7 +175,7 @@ def edit_category(category_id):
             error = str(e)
 
     return render_template(
-        "category_form.html",
+        "category/category_form.html",
         item=item,
         units=DonVi.query.order_by(DonVi.id.asc()).all(),
         error=error
@@ -270,7 +270,7 @@ def manage_category_fields(category_id):
     )
 
     return render_template(
-        "category_fields.html",
+        "category/category_fields.html",
         item=item,
         fields=fields,
         error=error
@@ -336,7 +336,7 @@ def manage_category_datasets(category_id):
     )
 
     return render_template(
-        "category_datasets.html",
+        "category/category_datasets.html",
         item=item,
         datasets=datasets,
         units=units,
@@ -779,7 +779,7 @@ def handle_dataset_records(item, dataset):
         sync_login_url = url_for("category_bp.sync_category_common_login", category_id=item.id)
 
     return render_template(
-        "category_records.html",
+        "category/category_records.html",
         item=item,
         dataset=dataset,
         fields=fields,

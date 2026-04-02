@@ -108,12 +108,12 @@
                     </select>
                 </div>
                 <div class="col-6">
-                    <label>Condition</label>
+                    <label>Điều kiện</label>
                     <select class="input-condition">
                         <option value="">-- Chọn điều kiện --</option>
                         {% for c in conditions %}
-                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} - {{
-                            c.ten_dieu_kien }}</option>
+                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} ({{
+                            c.ten_dieu_kien }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -331,7 +331,7 @@
                 data.forEach(function (f) {
                     const opt = document.createElement("option");
                     opt.value = f.id;
-                    opt.textContent = f.ten_truong + ' | ' + f.xml_path + ' (' + (f.data_type || 'STRING') + ')';
+                    opt.textContent = f.ten_truong + ' (' + (f.data_type || 'STRING') + ')';
                     opt.dataset.type = f.data_type || "STRING";
                     if (String(selectedValue || "") === String(f.id)) {
                         opt.selected = true;

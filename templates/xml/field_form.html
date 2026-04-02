@@ -12,7 +12,14 @@
 
     <form method="POST">
         <label>Tên trường</label>
-        <input type="text" name="ten_truong" required value="{{ item.ten_truong if item else '' }}" placeholder="Họ tên">
+        <input
+            type="text"
+            id="ten_truong"
+            name="ten_truong"
+            required
+            value="{{ item.ten_truong if item else '' }}"
+            placeholder="Họ tên"
+        >
 
         <label>XML</label>
         <select name="xml_id" required>
@@ -24,7 +31,14 @@
         </select>
 
         <label>XML path (trong item)</label>
-        <input type="text" name="xml_path" required value="{{ item.xml_path if item else '' }}" placeholder="./HO_TEN">
+        <input
+            type="text"
+            id="xml_path"
+            name="xml_path"
+            required
+            value="{{ item.xml_path if item else '' }}"
+            placeholder="./HO_TEN"
+        >
 
         <label>Kiểu dữ liệu</label>
         <select name="data_type">
@@ -40,4 +54,46 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const nameInput = document.getElementById('ten_truong');
+        const pathInput = document.getElementById('xml_path');
+
+        if (!nameInput || !pathInput) return;
+
+        let pathManuallyEdited = false;
+
+        const normalizePathFromName = (nameValue) => {
+            const value = (nameValue || '').trim();
+            return value ? './' + value : './';
+        };
+
+        const syncPathFromName = () => {
+            if (pathManuallyEdited) return;
+            pathInput.value = normalizePathFromName(nameInput.value);
+        };
+
+        const initialName = (nameInput.value || '').trim();
+        const initialPath = (pathInput.value || '').trim();
+        const expectedInitialPath = normalizePathFromName(initialName);
+
+        if (!initialPath || initialPath === expectedInitialPath) {
+            pathManuallyEdited = false;
+        } else {
+            pathManuallyEdited = true;
+        }
+
+        nameInput.addEventListener('input', syncPathFromName);
+
+        pathInput.addEventListener('input', function () {
+            const currentPath = (pathInput.value || '').trim();
+            const expectedPath = normalizePathFromName(nameInput.value);
+
+            pathManuallyEdited = currentPath !== '' && currentPath !== expectedPath;
+        });
+
+        syncPathFromName();
+    });
+</script>
 {% endblock %}

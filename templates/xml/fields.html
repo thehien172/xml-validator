@@ -2,38 +2,300 @@
 {% block title %}Trường dữ liệu{% endblock %}
 
 {% block content %}
+<style>
+    .page-tools {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .tool-form {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: end;
+        width: 100%;
+    }
+
+    .tool-form .tool-field {
+        flex: 1;
+        min-width: 240px;
+    }
+
+    .tool-form .tool-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .tree-wrapper {
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        padding: 20px;
+    }
+
+    .tree-root,
+    .tree-children {
+        list-style: none;
+        margin: 0;
+        padding-left: 22px;
+    }
+
+    .tree-root {
+        padding-left: 0;
+    }
+
+    .tree-item {
+        margin: 10px 0;
+    }
+
+    .tree-item summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: #cae1ff;
+        border: 1px solid #95c3ff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tree-item summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .tree-item details > summary::before {
+        content: "▸";
+        display: inline-block;
+        transition: transform 0.25s ease;
+        color: #2563eb;
+        font-size: 17px;
+        margin-right: 6px;
+        flex-shrink: 0;
+    }
+
+    .tree-item details[open] > summary::before {
+        transform: rotate(90deg);
+    }
+
+    .tree-item details > summary:hover {
+        background: #77b7ff;
+        border-color: #bfdbfe;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
+    }
+
+    .tree-summary-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .tree-summary-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .tree-title {
+        font-weight: 700;
+        color: #0f172a;
+        word-break: break-word;
+    }
+
+    .badge-xml,
+    .badge-count {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .badge-xml {
+        background: #ecfeff;
+        color: #0f766e;
+    }
+
+    .badge-count {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .field-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .field-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        padding: 6px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #ffffff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .field-row:hover {
+        border-color: #bfdbfe;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
+        transform: translateY(-1px);
+    }
+
+    .field-main {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .field-top {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .field-name {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .field-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .field-path {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #334155;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 6px 10px;
+        word-break: break-all;
+    }
+
+    .field-type,
+    .field-stt {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .field-type {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .field-stt {
+        background: #eef2ff;
+        color: #4338ca;
+    }
+
+    .field-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-height: 32px;
+    }
+
+    .tree-empty-child {
+        margin-top: 8px;
+    }
+
+    .tree-empty-text {
+        padding: 10px 14px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
+    .group-total {
+        margin-bottom: 14px;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+        .field-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .field-actions {
+            justify-content: flex-start;
+        }
+
+        .tree-item summary {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .tree-summary-right {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h1 class="page-title">Danh mục trường dữ liệu</h1>
-    <div class="page-subtitle">Quản lý field dùng trong các rule kiểm tra XML.</div>
+    <div class="page-subtitle">Hiển thị theo dạng cây, gom nhóm field theo từng XML.</div>
 </div>
 
 <div class="card">
     <h2 class="card-title">Bộ lọc</h2>
 
-    <form method="GET">
-        <div class="grid">
-            <div class="col-6">
-                <label>Tìm theo tên / path / XML</label>
-                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Họ tên, ./MA_BAC_SI, XML3...">
-            </div>
-
-            <div class="col-6">
-                <label>Lọc theo XML</label>
-                <select name="xml_id">
-                    <option value="">-- Tất cả --</option>
-                    {% for x in xmls %}
-                        <option value="{{ x.id }}" {% if xml_id and xml_id|int == x.id %}selected{% endif %}>
-                            {{ x.ma_xml }} - {{ x.ten_xml }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+    <form method="GET" class="tool-form">
+        <div class="tool-field">
+            <label>Tìm theo tên / path / XML</label>
+            <input type="text" name="keyword" value="{{ keyword }}" placeholder="Họ tên, ./MA_BAC_SI, XML3...">
         </div>
 
-        <div class="actions">
+        <div class="tool-field">
+            <label>Lọc theo XML</label>
+            <select name="xml_id">
+                <option value="">-- Tất cả --</option>
+                {% for x in xmls %}
+                    <option value="{{ x.id }}" {% if xml_id and xml_id|int == x.id %}selected{% endif %}>
+                        {{ x.ma_xml }} - {{ x.ten_xml }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="tool-actions">
             <button type="submit" class="btn btn-primary">Tìm</button>
             <a href="/fields" class="btn btn-secondary">Xóa lọc</a>
             <a href="/fields/create" class="btn btn-primary">+ Thêm field</a>
+            <a href="/xmls" class="btn btn-secondary">⚙️ XML</a>
         </div>
     </form>
 </div>
@@ -42,41 +304,131 @@
     <h2 class="card-title">Danh sách field</h2>
 
     {% if fields %}
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 90px;">STT</th>
-                        <th>Tên trường</th>
-                        <th style="width: 220px;">XML</th>
-                        <th>Path</th>
-                        <th style="width: 140px;">Kiểu dữ liệu</th>
-                        <th style="width: 180px;">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for f in fields %}
-                    <tr>
-                        <td><strong>{{ loop.index }}</strong></td>
-                        <td>{{ f.ten_truong }}</td>
-                        <td>{{ f.xml.ma_xml }}</td>
-                        <td><code>{{ f.xml_path }}</code></td>
-                        <td>{{ f.data_type }}</td>
-                        <td>
-                            <div class="actions actions-center">
-                                <a class="btn btn-secondary" href="/fields/{{ f.id }}/edit">Sửa</a>
-                                <form class="inline" method="POST" action="/fields/{{ f.id }}/delete" onsubmit="return confirm('Xóa field này?');">
-                                    <button class="btn btn-danger" type="submit">Xóa</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        {% set sorted_fields = fields|sort(attribute='xml.id') %}
+        {% set grouped_fields = sorted_fields|groupby('xml.id') %}
+
+        <div class="group-total">
+            Tổng số field: <strong>{{ fields|length }}</strong>
+        </div>
+
+        <div class="tree-wrapper">
+            <ul class="tree-root">
+                {% for group in grouped_fields %}
+                    {% set xml_fields = group.list %}
+                    {% set xml_item = xml_fields[0].xml %}
+                    <li class="tree-item">
+                        <details open>
+                            <summary>
+                                <div class="tree-summary-left">
+                                    <span class="tree-title">
+                                        {{ xml_item.ma_xml }} - {{ xml_item.ten_xml }}
+                                    </span>
+                                </div>
+
+                                <div class="tree-summary-right">
+                                    <span class="badge-xml">XML ID: {{ xml_item.id }}</span>
+                                    <span class="badge-count">{{ xml_fields|length }} field</span>
+                                </div>
+                            </summary>
+
+                            <ul class="tree-children">
+                                <li>
+                                    <div class="field-list">
+                                        {% for f in xml_fields|sort(attribute='ten_truong') %}
+                                            <div class="field-row">
+                                                <div class="field-main">
+                                                    <div class="field-top">
+                                                        <span class="field-stt">{{ loop.index }}</span>
+                                                        <span class="field-name">{{ f.ten_truong }}</span>
+                                                        <span class="field-path">{{ f.xml_path }}</span>
+                                                        <span class="field-type">{{ f.data_type }}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="field-actions">
+                                                    <a class="btn btn-secondary btn-sm" href="/fields/{{ f.id }}/edit">Sửa</a>
+
+                                                    <form class="inline"
+                                                          method="POST"
+                                                          action="/fields/{{ f.id }}/delete"
+                                                          onsubmit="return confirm('Xóa field này?');">
+                                                        <button class="btn btn-danger btn-sm" type="submit">Xóa</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </li>
+                            </ul>
+                        </details>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
     {% else %}
         <div class="empty-state">Chưa có dữ liệu field.</div>
     {% endif %}
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const detailsList = document.querySelectorAll(".tree-item details");
+
+        detailsList.forEach((details) => {
+            const summary = details.querySelector("summary");
+            const content = details.querySelector(".tree-children");
+
+            if (!summary || !content) return;
+
+            if (details.open) {
+                content.style.height = "auto";
+            } else {
+                content.style.height = "0px";
+            }
+
+            summary.addEventListener("click", function (e) {
+                e.preventDefault();
+
+                const isOpen = details.open;
+
+                if (isOpen) {
+                    const startHeight = content.scrollHeight;
+                    content.style.height = startHeight + "px";
+
+                    requestAnimationFrame(() => {
+                        content.style.transition = "height 0.25s ease";
+                        content.style.height = "0px";
+                    });
+
+                    const onCloseEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        details.open = false;
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onCloseEnd);
+                    };
+
+                    content.addEventListener("transitionend", onCloseEnd);
+                } else {
+                    details.open = true;
+                    content.style.height = "0px";
+
+                    requestAnimationFrame(() => {
+                        const endHeight = content.scrollHeight;
+                        content.style.transition = "height 0.28s ease";
+                        content.style.height = endHeight + "px";
+                    });
+
+                    const onOpenEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        content.style.height = "auto";
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onOpenEnd);
+                    };
+
+                    content.addEventListener("transitionend", onOpenEnd);
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}
