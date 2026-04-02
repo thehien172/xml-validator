@@ -1,38 +1,54 @@
 {% extends "base.html" %}
 
 {% macro render_node(node) %}
-    {% if node.type == "group" %}
-        <li class="tree-group-item">
-            <details open>
-                <summary>
-                    <span class="tree-group-title">{{ node.group.ten_nhom }}</span>
-                    <span class="tree-count">{{ node.rule_count }} rule</span>
-                </summary>
+{% if node.type == "group" %}
+<li class="tree-group-item">
+    <details open>
+        <summary>
+            <span class="tree-group-title">{{ node.group.ten_nhom }}</span>
+            <span class="tree-count">{{ node.rule_count }} rule</span>
+        </summary>
 
-                {% if node.children %}
-                    <ul class="tree-children">
-                        {% for child in node.children %}
-                            {{ render_node(child) }}
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </details>
-        </li>
-    {% else %}
-        <li class="tree-rule-item">
-            <div class="tree-rule-card">
-                <div class="tree-rule-title">
-                    {{ node.rule.ten_rule }}
-                </div>
+        {% if node.children %}
+        <ul class="tree-children">
+            {% for child in node.children %}
+            {{ render_node(child) }}
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </details>
+</li>
+{% else %}
+<li class="tree-rule-item">
+    <div class="tree-rule-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+
+            <div class="tree-rule-title">
+                {{ node.rule.ten_rule }}
             </div>
-        </li>
-    {% endif %}
+
+            <div>
+                <a href="/rules/{{ node.rule.id }}/details" class="btn btn-sm btn-secondary"
+                    style="margin:5px 0px 5px 0px;min-height:20px">
+                    ⚙️
+                </a>
+            </div>
+
+        </div>
+    </div>
+</li>
+{% endif %}
 {% endmacro %}
 
 {% block title %}Cây rule hoạt động{% endblock %}
 
 {% block content %}
 <style>
+    .btn-sm {
+        padding: 4px 10px;
+        font-size: 12px;
+    }
+
     .page-tools {
         display: flex;
         justify-content: space-between;
@@ -83,7 +99,7 @@
         list-style: none;
         padding: 10px 12px;
         border-radius: 12px;
-        background: #f8fbff;
+        background: #f1f7ff;
         border: 1px solid #dbeafe;
         display: flex;
         flex-wrap: wrap;
@@ -120,13 +136,12 @@
         border: 1px solid #e5e7eb;
         border-left: 4px solid #2563eb;
         border-radius: 12px;
-        padding: 12px 14px;
+        padding: 0px 14px;
     }
 
     .tree-rule-title {
         font-weight: 700;
         color: #111827;
-        margin-bottom: 6px;
     }
 
     .tree-rule-meta {
@@ -139,6 +154,52 @@
         color: #374151;
         font-size: 14px;
     }
+
+    .tree-group-item details>summary {
+        position: relative;
+        transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .tree-group-item details>summary:hover {
+        background: #eaf3ff;
+        border-color: #bfdbfe;
+    }
+
+    .tree-group-item details>summary::before {
+        content: "▸";
+        display: inline-block;
+        transition: transform 0.25s ease;
+        color: #2563eb;
+        font-size: 17px;
+    }
+
+    .tree-group-item details[open]>summary::before {
+        transform: rotate(90deg);
+    }
+
+    .tree-group-item details>summary {
+        list-style: none;
+    }
+
+    .tree-group-item details>.tree-children {
+        overflow: hidden;
+        will-change: height;
+    }
+
+    .tree-rule-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-left: 4px solid #2563eb;
+        border-radius: 12px;
+        padding: 0px 14px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .tree-rule-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+        border-color: #cbd5e1;
+    }
 </style>
 
 <div class="page-header">
@@ -150,7 +211,8 @@
 
 <div class="page-tools">
     <form method="get" class="tool-form">
-        <input type="text" name="keyword" value="{{ keyword }}" placeholder="Tìm theo tên rule, thông báo, nhóm, bộ rule...">
+        <input type="text" name="keyword" value="{{ keyword }}"
+            placeholder="Tìm theo tên rule, thông báo, nhóm, bộ rule...">
         <button type="submit" class="btn btn-primary">Tìm kiếm</button>
         <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">Xóa lọc</a>
         <a href="{{ url_for('rule_bp.list_rules') }}" class="btn btn-primary">⚙️ Rules</a>
@@ -165,15 +227,76 @@
 
 <div class="tree-wrapper">
     {% if tree_nodes %}
-        <ul class="tree-root">
-            {% for node in tree_nodes %}
-                {{ render_node(node) }}
-            {% endfor %}
-        </ul>
+    <ul class="tree-root">
+        {% for node in tree_nodes %}
+        {{ render_node(node) }}
+        {% endfor %}
+    </ul>
     {% else %}
-        <div class="empty-state">
-            Không có rule hoạt động nào đã được gán nhóm để hiển thị trên cây.
-        </div>
+    <div class="empty-state">
+        Không có rule hoạt động nào đã được gán nhóm để hiển thị trên cây.
+    </div>
     {% endif %}
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const detailsList = document.querySelectorAll(".tree-group-item details");
+
+        detailsList.forEach((details) => {
+            const summary = details.querySelector("summary");
+            const content = details.querySelector(".tree-children");
+
+            if (!summary || !content) return;
+
+            if (details.open) {
+                content.style.height = "auto";
+            } else {
+                content.style.height = "0px";
+            }
+
+            summary.addEventListener("click", function (e) {
+                e.preventDefault();
+
+                const isOpen = details.open;
+
+                if (isOpen) {
+                    const startHeight = content.scrollHeight;
+                    content.style.height = startHeight + "px";
+
+                    requestAnimationFrame(() => {
+                        content.style.transition = "height 0.25s ease";
+                        content.style.height = "0px";
+                    });
+
+                    const onCloseEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        details.open = false;
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onCloseEnd);
+                    };
+
+                    content.addEventListener("transitionend", onCloseEnd);
+                } else {
+                    details.open = true;
+                    content.style.height = "0px";
+
+                    requestAnimationFrame(() => {
+                        const endHeight = content.scrollHeight;
+                        content.style.transition = "height 0.28s ease";
+                        content.style.height = endHeight + "px";
+                    });
+
+                    const onOpenEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        content.style.height = "auto";
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onOpenEnd);
+                    };
+
+                    content.addEventListener("transitionend", onOpenEnd);
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

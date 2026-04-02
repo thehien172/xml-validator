@@ -1,81 +1,409 @@
 {% extends "base.html" %}
 
+{% macro render_group_node(node, level=0) %}
+<li class="group-tree-item" data-group-id="{{ node.group.id }}">
+    <details open>
+        <summary>
+            <div class="group-summary-left">
+                <span class="group-toggle-spacer"></span>
+                <span class="group-title">{{ node.group.ten_nhom }}</span>
+            </div>
+
+            <div class="group-summary-right">
+                <span class="group-sort">Thứ tự: {{ node.group.sort_order or 1 }}</span>
+                <span class="group-count">{{ node.rule_count }} rule</span>
+
+                <span class="group-actions" onclick="event.stopPropagation()">
+                    <button type="button"
+                            class="btn btn-sm btn-primary"
+                            onclick="toggleInlineCreate({{ node.group.id }})">
+                        + Nhóm con
+                    </button>
+
+                    <a href="{{ url_for('rule_group_bp.assign_rules', group_id=node.group.id) }}"
+                       class="btn btn-sm btn-secondary">
+                        Gán rule
+                    </a>
+
+                    <a href="{{ url_for('rule_group_bp.edit_group', group_id=node.group.id) }}"
+                       class="btn btn-sm btn-secondary">
+                        Sửa
+                    </a>
+
+                    <form method="post"
+                          action="{{ url_for('rule_group_bp.delete_group', group_id=node.group.id) }}"
+                          class="inline"
+                          onsubmit="return confirm('Xóa nhóm này?')">
+                        <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                    </form>
+                </span>
+            </div>
+        </summary>
+
+        <ul class="tree-children">
+            <li class="inline-create-row"
+                id="inline-create-{{ node.group.id }}"
+                style="display:none;">
+                <div class="inline-create-card">
+                    <form method="post"
+                          action="{{ url_for('rule_group_bp.create_group') }}"
+                          class="inline-create-form">
+                        <input type="hidden" name="parent_id" value="{{ node.group.id }}">
+
+                        <div class="inline-form-grid">
+                            <div class="inline-field inline-field-name">
+                                <label>Tên nhóm con</label>
+                                <input type="text"
+                                       name="ten_nhom"
+                                       placeholder="Nhập tên nhóm con"
+                                       required>
+                            </div>
+
+                            <div class="inline-field inline-field-sort">
+                                <label>Thứ tự</label>
+                                <input type="number"
+                                       name="sort_order"
+                                       value="1"
+                                       min="1">
+                            </div>
+
+                            <div class="inline-field inline-field-actions">
+                                <label>&nbsp;</label>
+                                <div class="actions">
+                                    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
+                                    <button type="button"
+                                            class="btn btn-secondary btn-sm"
+                                            onclick="hideInlineCreate({{ node.group.id }})">
+                                        Hủy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </li>
+
+            {% if node.children %}
+                {% for child in node.children %}
+                    {{ render_group_node(child, level + 1) }}
+                {% endfor %}
+            {% else %}
+                <li class="tree-empty-child">
+                    <div class="tree-empty-text">Chưa có nhóm con.</div>
+                </li>
+            {% endif %}
+        </ul>
+    </details>
+</li>
+{% endmacro %}
+
 {% block title %}Cấu hình nhóm rule{% endblock %}
 
 {% block content %}
+<style>
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-height: 32px;
+    }
+
+    .page-tools {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .tool-form {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+    }
+
+    .tool-form input[type="text"] {
+        max-width: 420px;
+    }
+
+    .tree-wrapper {
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        padding: 20px;
+    }
+
+    .tree-root,
+    .tree-children {
+        list-style: none;
+        margin: 0;
+        padding-left: 22px;
+    }
+
+    .tree-root {
+        padding-left: 0;
+    }
+
+    .group-tree-item {
+        margin: 10px 0;
+    }
+
+    .group-tree-item summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 8px 14px;
+        border-radius: 14px;
+        background: #f8fbff;
+        border: 1px solid #dbeafe;
+        display: flex;
+        justify-content: space-between;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .group-tree-item summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .group-tree-item details > summary::before {
+        content: "▸";
+        display: inline-block;
+        transition: transform 0.25s ease;
+        color: #2563eb;
+        font-size: 17px;
+        margin-right: 4px;
+        padding-top: 8px;
+        flex-shrink: 0;
+    }
+
+    .group-tree-item details[open] > summary::before {
+        transform: rotate(90deg);
+    }
+
+    .group-tree-item details > summary:hover {
+        background: #eef6ff;
+        border-color: #bfdbfe;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
+    }
+
+    .group-summary-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .group-summary-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .group-title {
+        font-weight: 700;
+        color: #0f172a;
+        word-break: break-word;
+    }
+
+    .group-parent-badge,
+    .group-root-badge,
+    .group-sort,
+    .group-count {
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .group-root-badge {
+        background: #ecfeff;
+        color: #0f766e;
+    }
+
+    .group-parent-badge {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .group-sort {
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    .group-count {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .group-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .tree-empty-child {
+        margin-top: 8px;
+    }
+
+    .tree-empty-text {
+        padding: 10px 14px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
+    .inline-create-row {
+        margin: 10px 0;
+    }
+
+    .inline-create-card {
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-left: 4px solid #2563eb;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+    }
+
+    .inline-create-form {
+        margin: 0;
+    }
+
+    .inline-form-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) 120px auto;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .inline-field label {
+        display: block;
+        font-weight: 600;
+        font-size: 13px;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+
+    .inline-field input {
+        width: 100%;
+    }
+
+    .inline-field-actions .actions {
+        margin-top: 0;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .top-create-card {
+        margin-bottom: 18px;
+        background: #f8fbff;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .top-create-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 12px;
+    }
+
+    @media (max-width: 1100px) {
+        .group-tree-item summary {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .group-summary-right {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .inline-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tool-form input[type="text"] {
+            max-width: 100%;
+            width: 100%;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h1 class="page-title">Cấu hình nhóm rule</h1>
     <div class="page-subtitle">
-        Quản lý nhóm cha/con và điều hướng sang màn gán rule vào nhóm.
+        Quản lý nhóm cha/con theo dạng cây, tạo nhóm con trực tiếp ngay dưới từng node.
     </div>
 </div>
 
+<div class="page-tools">
+    <form method="get" class="tool-form">
+        <input type="text"
+               name="keyword"
+               value="{{ keyword }}"
+               placeholder="Tìm theo tên nhóm...">
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">Xóa lọc</a>
+        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">← Cây rule</a>
+    </form>
+</div>
+
 <div class="card">
-    <div class="actions">
-        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">← Về cây rule</a>
-        <a href="{{ url_for('rule_group_bp.create_group') }}" class="btn btn-primary">+ Tạo nhóm mới</a>
+    <div class="card-title">Tạo nhóm gốc</div>
+    <div class="top-create-card">
+        <div class="top-create-title">Thêm nhanh nhóm gốc</div>
+        <form method="post" action="{{ url_for('rule_group_bp.create_group') }}" class="inline-create-form">
+            <div class="inline-form-grid">
+                <div class="inline-field inline-field-name">
+                    <label>Tên nhóm</label>
+                    <input type="text"
+                           name="ten_nhom"
+                           placeholder="Nhập tên nhóm gốc"
+                           required>
+                </div>
+
+                <div class="inline-field inline-field-sort">
+                    <label>Thứ tự</label>
+                    <input type="number"
+                           name="sort_order"
+                           value="1"
+                           min="1">
+                </div>
+
+                <div class="inline-field inline-field-actions">
+                    <label>&nbsp;</label>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-primary">+ Tạo nhóm gốc</button>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
 <div class="card">
     <div class="card-title">Danh sách nhóm rule</div>
 
-    <form method="get" class="grid">
-        <div class="col-6">
-            <label>Từ khóa</label>
-            <input type="text" name="keyword" value="{{ keyword }}">
-        </div>
-        <div class="col-6">
-            <label>&nbsp;</label>
-            <div class="actions">
-                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
-                <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">Xóa lọc</a>
-            </div>
-        </div>
-    </form>
-
-    <div class="section-divider"></div>
-
-    {% if groups %}
-        <div class="table-wrap" style="margin-top: 18px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Tên nhóm</th>
-                        <th>Nhóm cha</th>
-                        <th>Thứ tự</th>
-                        <th>Rule đang gán</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in groups %}
-                    <tr>
-                        <td>{{ item.id }}</td>
-                        <td style="text-align:left;">{{ item.ten_nhom }}</td>
-                        <td>
-                            {% if item.parent %}
-                                {{ item.parent.ten_nhom }}
-                            {% else %}
-                                <span class="muted">Nhóm gốc</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ item.sort_order }}</td>
-                        <td>{{ item.rules|length }}</td>
-                        <td>
-                            <div class="actions actions-center">
-                                <a href="{{ url_for('rule_group_bp.assign_rules', group_id=item.id) }}" class="btn btn-primary">Gán rule</a>
-                                <a href="{{ url_for('rule_group_bp.edit_group', group_id=item.id) }}" class="btn btn-secondary">Sửa</a>
-                                <form method="post" action="{{ url_for('rule_group_bp.delete_group', group_id=item.id) }}" class="inline" onsubmit="return confirm('Xóa nhóm này?')">
-                                    <button type="submit" class="btn btn-danger">Xóa</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {% if tree_nodes %}
+        <div class="tree-wrapper">
+            <ul class="tree-root">
+                {% for node in tree_nodes %}
+                    {{ render_group_node(node) }}
+                {% endfor %}
+            </ul>
         </div>
     {% else %}
         <div class="empty-state" style="margin-top:18px;">
@@ -83,4 +411,121 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+    function hideAllInlineCreateRows() {
+        document.querySelectorAll('.inline-create-row').forEach(function (row) {
+            row.style.display = 'none';
+            const form = row.querySelector('form');
+            if (form) {
+                form.reset();
+                const sortInput = form.querySelector('input[name="sort_order"]');
+                if (sortInput) sortInput.value = 1;
+            }
+        });
+    }
+
+    function toggleInlineCreate(groupId) {
+        const row = document.getElementById('inline-create-' + groupId);
+        if (!row) return;
+
+        const isVisible = row.style.display !== 'none';
+
+        hideAllInlineCreateRows();
+
+        if (!isVisible) {
+            row.style.display = 'list-item';
+
+            const parentDetails = row.closest('details');
+            if (parentDetails) {
+                parentDetails.open = true;
+            }
+
+            const nameInput = row.querySelector('input[name="ten_nhom"]');
+            if (nameInput) {
+                setTimeout(function () {
+                    nameInput.focus();
+                }, 50);
+            }
+        }
+    }
+
+    function hideInlineCreate(groupId) {
+        const row = document.getElementById('inline-create-' + groupId);
+        if (!row) return;
+
+        row.style.display = 'none';
+
+        const form = row.querySelector('form');
+        if (form) {
+            form.reset();
+            const sortInput = form.querySelector('input[name="sort_order"]');
+            if (sortInput) sortInput.value = 1;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const detailsList = document.querySelectorAll(".group-tree-item details");
+
+        detailsList.forEach((details) => {
+            const summary = details.querySelector("summary");
+            const content = details.querySelector(".tree-children");
+
+            if (!summary || !content) return;
+
+            if (details.open) {
+                content.style.height = "auto";
+            } else {
+                content.style.height = "0px";
+            }
+
+            summary.addEventListener("click", function (e) {
+                if (e.target.closest(".group-actions")) {
+                    return;
+                }
+
+                e.preventDefault();
+
+                const isOpen = details.open;
+
+                if (isOpen) {
+                    const startHeight = content.scrollHeight;
+                    content.style.height = startHeight + "px";
+
+                    requestAnimationFrame(() => {
+                        content.style.transition = "height 0.25s ease";
+                        content.style.height = "0px";
+                    });
+
+                    const onCloseEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        details.open = false;
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onCloseEnd);
+                    };
+
+                    content.addEventListener("transitionend", onCloseEnd);
+                } else {
+                    details.open = true;
+                    content.style.height = "0px";
+
+                    requestAnimationFrame(() => {
+                        const endHeight = content.scrollHeight;
+                        content.style.transition = "height 0.28s ease";
+                        content.style.height = endHeight + "px";
+                    });
+
+                    const onOpenEnd = function (ev) {
+                        if (ev.propertyName !== "height") return;
+                        content.style.height = "auto";
+                        content.style.transition = "";
+                        content.removeEventListener("transitionend", onOpenEnd);
+                    };
+
+                    content.addEventListener("transitionend", onOpenEnd);
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

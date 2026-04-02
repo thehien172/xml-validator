@@ -35,13 +35,13 @@ def tree_view():
 
     active_rules = query.order_by(Rule.id.asc()).all()
 
-    all_active_groups = (
+    all_groups = (
         RuleGroup.query
         .order_by(RuleGroup.sort_order.asc(), RuleGroup.id.asc())
         .all()
     )
 
-    tree_nodes = build_rule_tree(all_active_groups, active_rules)
+    tree_nodes = build_rule_tree(all_groups, active_rules)
 
     return render_template(
         "rule/rule_group/tree_rules.html",
@@ -59,9 +59,7 @@ def list_groups():
 
     if keyword:
         query = query.filter(
-            or_(
-                RuleGroup.ten_nhom.ilike(f"%{keyword}%")
-            )
+            RuleGroup.ten_nhom.ilike(f"%{keyword}%")
         )
 
     groups = query.order_by(
@@ -69,9 +67,11 @@ def list_groups():
         RuleGroup.id.asc()
     ).all()
 
+    tree_nodes = build_group_tree(groups)
+
     return render_template(
         "rule/rule_group/rule_groups.html",
-        groups=groups,
+        tree_nodes=tree_nodes,
         keyword=keyword
     )
 
@@ -79,7 +79,10 @@ def list_groups():
 @rule_group_bp.route("/create", methods=["GET", "POST"])
 def create_group():
     error = None
-    groups = RuleGroup.query.order_by(RuleGroup.sort_order.asc(), RuleGroup.id.asc()).all()
+    groups = RuleGroup.query.order_by(
+        RuleGroup.sort_order.asc(),
+        RuleGroup.id.asc()
+    ).all()
 
     if request.method == "POST":
         try:
@@ -102,6 +105,7 @@ def create_group():
             )
             db.session.add(item)
             db.session.commit()
+
             return redirect(url_for("rule_group_bp.list_groups"))
 
         except Exception as e:
@@ -120,6 +124,7 @@ def create_group():
 def edit_group(group_id):
     item = RuleGroup.query.get_or_404(group_id)
     error = None
+
     groups = (
         RuleGroup.query
         .filter(RuleGroup.id != group_id)
@@ -242,13 +247,49 @@ def assign_rules(group_id):
 
 def is_descendant(candidate_parent_id, current_group_id):
     current = RuleGroup.query.get(candidate_parent_id)
+
     while current:
         if current.id == current_group_id:
             return True
+
         if not current.parent_id:
             return False
+
         current = RuleGroup.query.get(current.parent_id)
+
     return False
+
+
+def build_group_tree(groups):
+    group_map = {}
+    roots = []
+
+    for group in groups:
+        rule_count = len(group.rules) if hasattr(group, "rules") and group.rules is not None else 0
+        group_map[group.id] = {
+            "id": group.id,
+            "type": "group",
+            "group": group,
+            "children": [],
+            "rule_count": rule_count
+        }
+
+    for group in groups:
+        node = group_map[group.id]
+        if group.parent_id and group.parent_id in group_map:
+            group_map[group.parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+
+    sort_group_nodes_recursive(roots)
+    return roots
+
+
+def sort_group_nodes_recursive(nodes):
+    nodes.sort(key=lambda x: ((x["group"].sort_order or 1), x["group"].id))
+    for node in nodes:
+        if node["children"]:
+            sort_group_nodes_recursive(node["children"])
 
 
 def build_rule_tree(groups, rules):

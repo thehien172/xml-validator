@@ -127,7 +127,8 @@
             <button class="btn btn-primary" type="submit">Tìm</button>
             <a href="/rules" class="btn btn-secondary">Xóa lọc</a>
             <a href="/rules/create" class="btn btn-primary">+ Thêm rule</a>
-            <a href="/rule-sets" class="btn btn-secondary">📦 Bộ Rule</a>
+            <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">← Cây rule</a>
+            <a href="/rule-sets" class="btn btn-primary">⚙️ Bộ Rule</a>
         </div>
     </form>
 </div>
