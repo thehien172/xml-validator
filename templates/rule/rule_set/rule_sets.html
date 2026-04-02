@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Bộ rule{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Danh sách bộ rule</h1>
+    <div class="page-subtitle">Quản lý các bộ rule đang được dùng trong hệ thống.</div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Bộ lọc</h2>
+
+    <form method="GET">
+        <div class="grid">
+            <div class="col-6">
+                <label>Tìm kiếm</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="4750, 3176, tên bộ rule...">
+            </div>
+
+            <div class="col-6">
+                <label>Trạng thái</label>
+                <select name="status">
+                    <option value="">-- Tất cả --</option>
+                    <option value="active" {% if status == 'active' %}selected{% endif %}>Áp dụng</option>
+                    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Không áp dụng</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Tìm</button>
+            <a href="/rule-sets" class="btn btn-secondary">Xóa lọc</a>
+            <a href="/rule-sets/create" class="btn btn-primary">+ Thêm bộ rule</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Danh sách bộ rule</h2>
+
+    {% if items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 90px;">STT</th>
+                        <th style="width: 140px;">Mã bộ rule</th>
+                        <th>Tên bộ rule</th>
+                        <th>Mô tả</th>
+                        <th style="width: 140px;">Trạng thái</th>
+                        <th style="width: 110px;">Số rule</th>
+                        <th style="width: 180px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in items %}
+                    <tr>
+                        <td><strong>{{ loop.index }}</strong></td>
+                        <td>{{ x.ma_bo_rule }}</td>
+                        <td>{{ x.ten_bo_rule }}</td>
+                        <td>{{ x.mo_ta or '' }}</td>
+                        <td>
+                            {% if x.is_active %}
+                                <span class="badge badge-info">ACTIVE</span>
+                            {% else %}
+                                <span class="badge badge-error">INACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ x.rules|length }}</td>
+                        <td>
+                            <div class="actions actions-center">
+                                <a class="btn btn-secondary" href="/rule-sets/{{ x.id }}/edit">Sửa</a>
+                                <form class="inline" method="POST" action="/rule-sets/{{ x.id }}/delete" onsubmit="return confirm('Xóa bộ rule này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">Chưa có dữ liệu bộ rule.</div>
+    {% endif %}
+</div>
+{% endblock %}

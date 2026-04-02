@@ -28,7 +28,7 @@ def list_rule_sets():
         query = query.filter(BoRule.is_active.is_(False))
 
     items = query.order_by(BoRule.id.asc()).all()
-    return render_template("rule_sets.html", items=items, keyword=keyword, status=status)
+    return render_template("rule/rule_set/rule_sets.html", items=items, keyword=keyword, status=status)
 
 
 @rule_set_bp.route("/create", methods=["GET", "POST"])
@@ -44,7 +44,7 @@ def create_rule_set():
         db.session.commit()
         return redirect(url_for("rule_set_bp.list_rule_sets"))
 
-    return render_template("rule_set_form.html", item=None)
+    return render_template("rule/rule_set/rule_set_form.html", item=None)
 
 
 @rule_set_bp.route("/<int:item_id>/edit", methods=["GET", "POST"])
@@ -59,7 +59,7 @@ def edit_rule_set(item_id):
         db.session.commit()
         return redirect(url_for("rule_set_bp.list_rule_sets"))
 
-    return render_template("rule_set_form.html", item=item)
+    return render_template("rule/rule_set/rule_set_form.html", item=item)
 
 
 @rule_set_bp.route("/<int:item_id>/delete", methods=["POST"])

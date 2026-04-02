@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Gán rule vào nhóm{% endblock %}
+
+{% block content %}
+<style>
+    .assign-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .assign-box {
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        padding: 18px;
+    }
+
+    .assign-box h3 {
+        margin-top: 0;
+        margin-bottom: 14px;
+        font-size: 18px;
+        color: #0f172a;
+    }
+
+    .assign-list {
+        max-height: 520px;
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px;
+        background: #f8fafc;
+    }
+
+    .assign-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 10px;
+    }
+
+    .assign-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .assign-item-title {
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+
+    .assign-item-meta {
+        color: #64748b;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .assign-item-message {
+        color: #374151;
+        font-size: 13px;
+    }
+
+    @media (max-width: 960px) {
+        .assign-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h1 class="page-title">Gán rule vào nhóm</h1>
+    <div class="page-subtitle">
+        Nhóm đang chọn: <strong>{{ group.ten_nhom }}</strong>
+    </div>
+</div>
+
+<div class="card">
+    <div class="actions">
+        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">← Về cây rule</a>
+        <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">Về danh sách nhóm</a>
+        <a href="{{ url_for('rule_group_bp.edit_group', group_id=group.id) }}" class="btn btn-primary">Sửa nhóm này</a>
+    </div>
+</div>
+
+{% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="assign-grid">
+    <div class="assign-box">
+        <h3>Rule chưa có nhóm</h3>
+        <form method="post">
+            <input type="hidden" name="action" value="add">
+
+            <div class="assign-list">
+                {% if free_rules %}
+                    {% for rule in free_rules %}
+                        <label class="assign-item">
+                            <input type="checkbox" name="free_rule_ids" value="{{ rule.id }}">
+                            <div>
+                                <div class="assign-item-title">{{ rule.ten_rule }}</div>
+                                <div class="assign-item-meta">
+                                    Bộ rule: {{ rule.bo_rule.ma_bo_rule }} 
+                                    {% if rule.is_active %}
+                                        Đang hoạt động
+                                    {% else %}
+                                        Không hoạt động
+                                    {% endif %}
+                                </div>
+                                <div class="assign-item-message">{{ rule.thong_bao }}</div>
+                            </div>
+                        </label>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">Không còn rule nào chưa gán nhóm.</div>
+                {% endif %}
+            </div>
+
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-primary">Thêm vào nhóm</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="assign-box">
+        <h3>Rule đang thuộc nhóm này</h3>
+        <form method="post">
+            <input type="hidden" name="action" value="remove">
+
+            <div class="assign-list">
+                {% if rules_in_group %}
+                    {% for rule in rules_in_group %}
+                        <label class="assign-item">
+                            <input type="checkbox" name="group_rule_ids" value="{{ rule.id }}">
+                            <div>
+                                <div class="assign-item-title">{{ rule.ten_rule }}</div>
+                                <div class="assign-item-meta">
+                                    Bộ rule: {{ rule.bo_rule.ma_bo_rule }}
+                                    {% if rule.is_active %}
+                                        Đang hoạt động
+                                    {% else %}
+                                        Không hoạt động
+                                    {% endif %}
+                                </div>
+                                <div class="assign-item-message">{{ rule.thong_bao }}</div>
+                            </div>
+                        </label>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">Nhóm này chưa có rule nào.</div>
+                {% endif %}
+            </div>
+
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-danger">Bỏ khỏi nhóm</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

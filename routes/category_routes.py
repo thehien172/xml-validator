@@ -52,7 +52,7 @@ def list_categories():
     unit_items = [x for x in items if (x.scope or "").upper() == "UNIT"]
 
     return render_template(
-        "categories.html",
+        "category/categories.html",
         items=items,
         common_items=common_items,
         unit_items=unit_items,

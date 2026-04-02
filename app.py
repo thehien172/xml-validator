@@ -13,6 +13,7 @@ from routes.rule_set_routes import rule_set_bp
 from routes.system_routes import system_bp, unit_bp
 from routes.category_routes import category_bp
 from utils.db_seed import seed_data
+from routes.rule_group_routes import rule_group_bp
 
 migrate = Migrate()
 
@@ -34,7 +35,8 @@ def create_app():
     app.register_blueprint(system_bp)
     app.register_blueprint(unit_bp)
     app.register_blueprint(category_bp)
-
+    app.register_blueprint(rule_group_bp)
+    
     with app.app_context():
         db.create_all()
         seed_data()

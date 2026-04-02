@@ -33,7 +33,7 @@ def list_fields():
     xmls = DanhMucXml.query.order_by(DanhMucXml.id.asc()).all()
 
     return render_template(
-        "fields.html",
+        "xml/fields.html",
         fields=fields,
         xmls=xmls,
         keyword=keyword,
@@ -56,7 +56,7 @@ def create_field():
         db.session.commit()
         return redirect(url_for("field_bp.list_fields"))
 
-    return render_template("field_form.html", item=None, xmls=xmls)
+    return render_template("xml/field_form.html", item=None, xmls=xmls)
 
 
 @field_bp.route("/<int:field_id>/edit", methods=["GET", "POST"])
@@ -72,7 +72,7 @@ def edit_field(field_id):
         db.session.commit()
         return redirect(url_for("field_bp.list_fields"))
 
-    return render_template("field_form.html", item=item, xmls=xmls)
+    return render_template("xml/field_form.html", item=item, xmls=xmls)
 
 
 @field_bp.route("/<int:field_id>/delete", methods=["POST"])

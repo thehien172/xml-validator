@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Field danh mục{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Field danh mục: {{ item.ten_danh_muc }}</h1>
+    <div class="page-subtitle">
+        {% if item.scope == 'UNIT' %}
+            Danh mục riêng - rule detail sẽ chọn danh mục cha này, engine tự map bộ dữ liệu theo đơn vị
+        {% else %}
+            Danh mục chung - dữ liệu dùng trực tiếp cho tất cả đơn vị
+        {% endif %}
+    </div>
+</div>
+
+{% if error %}
+<div class="card">
+    <div class="alert alert-error">{{ error }}</div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2 class="card-title">Thêm field</h2>
+
+    <form method="POST">
+        <input type="hidden" name="action" value="create">
+
+        <div class="grid">
+            <div class="col-6">
+                <label>Mã trường</label>
+                <input type="text" name="ma_truong" placeholder="Ví dụ: ma_bac_si">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">+ Thêm field</button>
+            <a href="/categories" class="btn btn-secondary">Quay lại danh mục</a>
+
+            {% if item.scope == 'UNIT' %}
+                <a href="/categories/{{ item.id }}/datasets" class="btn btn-primary">Bộ dữ liệu đơn vị</a>
+            {% else %}
+                <a href="/categories/{{ item.id }}/records" class="btn btn-primary">Dữ liệu</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Danh sách field</h2>
+
+    {% if fields %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:90px;">STT</th>
+                    <th style="width:220px;">Mã trường</th>
+                    <th style="width:140px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fields %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ f.ma_truong }}</code></td>
+                    <td>
+                        <form method="POST" onsubmit="return confirm('Xóa field này? Dữ liệu theo field này cũng sẽ bị xóa.');">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="field_id" value="{{ f.id }}">
+                            <button class="btn btn-danger" type="submit">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Danh mục này chưa có field nào.</div>
+    {% endif %}
+</div>
+{% endblock %}

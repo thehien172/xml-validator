@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Cấu hình nhóm rule{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Cấu hình nhóm rule</h1>
+    <div class="page-subtitle">
+        Quản lý nhóm cha/con và điều hướng sang màn gán rule vào nhóm.
+    </div>
+</div>
+
+<div class="card">
+    <div class="actions">
+        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">← Về cây rule</a>
+        <a href="{{ url_for('rule_group_bp.create_group') }}" class="btn btn-primary">+ Tạo nhóm mới</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Danh sách nhóm rule</div>
+
+    <form method="get" class="grid">
+        <div class="col-6">
+            <label>Từ khóa</label>
+            <input type="text" name="keyword" value="{{ keyword }}">
+        </div>
+        <div class="col-6">
+            <label>&nbsp;</label>
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">Xóa lọc</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="section-divider"></div>
+
+    {% if groups %}
+        <div class="table-wrap" style="margin-top: 18px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên nhóm</th>
+                        <th>Nhóm cha</th>
+                        <th>Thứ tự</th>
+                        <th>Rule đang gán</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in groups %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td style="text-align:left;">{{ item.ten_nhom }}</td>
+                        <td>
+                            {% if item.parent %}
+                                {{ item.parent.ten_nhom }}
+                            {% else %}
+                                <span class="muted">Nhóm gốc</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.sort_order }}</td>
+                        <td>{{ item.rules|length }}</td>
+                        <td>
+                            <div class="actions actions-center">
+                                <a href="{{ url_for('rule_group_bp.assign_rules', group_id=item.id) }}" class="btn btn-primary">Gán rule</a>
+                                <a href="{{ url_for('rule_group_bp.edit_group', group_id=item.id) }}" class="btn btn-secondary">Sửa</a>
+                                <form method="post" action="{{ url_for('rule_group_bp.delete_group', group_id=item.id) }}" class="inline" onsubmit="return confirm('Xóa nhóm này?')">
+                                    <button type="submit" class="btn btn-danger">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state" style="margin-top:18px;">
+            Chưa có nhóm rule nào.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

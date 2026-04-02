@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa rule{% else %}Thêm rule{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa rule{% else %}Thêm rule{% endif %}</h1>
+    <div class="page-subtitle">Khai báo rule kiểm tra thuộc một bộ rule cụ thể.</div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Thông tin rule</h2>
+
+    {% if error %}
+        <div class="alert alert-error" style="margin-bottom: 16px;">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form method="POST" id="rule-form">
+        <label>Bộ rule</label>
+        <select name="bo_rule_id" required>
+            <option value="">-- Chọn bộ rule --</option>
+            {% for b in bo_rules %}
+                <option value="{{ b.id }}" {% if item and item.bo_rule_id == b.id %}selected{% endif %}>
+                    {{ b.ma_bo_rule }} - {{ b.ten_bo_rule }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Tên rule</label>
+        <input
+            type="text"
+            name="ten_rule"
+            required
+            value="{{ item.ten_rule if item else '' }}"
+            placeholder="Ví dụ: Check mã bác sĩ ngoài giờ"
+        >
+
+        <label>Thông báo</label>
+        <textarea
+            name="thong_bao"
+            required
+            placeholder="Nội dung cảnh báo khi rule fail"
+        >{{ item.thong_bao if item else '' }}</textarea>
+
+        <div class="grid">
+            <div class="col-4">
+                <label>Mức độ</label>
+                <select name="severity">
+                    <option value="WARNING" {% if not item or item.severity == 'WARNING' %}selected{% endif %}>WARNING</option>
+                    <option value="ERROR" {% if item and item.severity == 'ERROR' %}selected{% endif %}>ERROR</option>
+                </select>
+            </div>
+
+            <div class="col-4">
+                <label>Trạng thái</label>
+                <select name="is_active">
+                    <option value="1" {% if not item or item.is_active %}selected{% endif %}>Áp dụng</option>
+                    <option value="0" {% if item and not item.is_active %}selected{% endif %}>Không áp dụng</option>
+                </select>
+            </div>
+
+            <div class="col-4">
+                <label>Phạm vi so sánh</label>
+                {% set current_run_scope = item.run_scope if item and item.run_scope else 'ONE_HOSO' %}
+                <select name="run_scope">
+                    <option value="ONE_HOSO" {% if current_run_scope == 'ONE_HOSO' %}selected{% endif %}>Một hồ sơ</option>
+                    <option value="ALL_HOSO" {% if current_run_scope == 'ALL_HOSO' %}selected{% endif %}>Liên hồ sơ</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 16px;">
+            <div class="col-4">
+                <label>Phạm vi áp dụng</label>
+                <select name="apply_scope" id="apply_scope" required>
+                    {% set current_scope = item.apply_scope if item and item.apply_scope else 'ALL' %}
+                    <option value="ALL" {% if current_scope == 'ALL' %}selected{% endif %}>Tất cả đơn vị</option>
+                    <option value="UNIT" {% if current_scope == 'UNIT' %}selected{% endif %}>Chỉ áp dụng cho đơn vị được chọn</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="unit-box" style="margin-top: 16px; display: none;">
+            <label>Đơn vị áp dụng</label>
+            <div style="margin-bottom: 8px; color: #666; font-size: 13px;">
+                Chỉ áp dụng khi chọn phạm vi là <strong>Chỉ áp dụng cho đơn vị được chọn</strong>.
+            </div>
+
+            {% if units %}
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 12px; max-height: 280px; overflow-y: auto;">
+                    {% for u in units %}
+                        <label style="display: block; margin-bottom: 8px; font-weight: normal;">
+                            <input
+                                type="checkbox"
+                                name="unit_ids"
+                                value="{{ u.id }}"
+                                {% if selected_unit_ids and (u.id|string) in selected_unit_ids %}checked{% endif %}
+                            >
+                            {{ u.ma_don_vi }} - {{ u.ten_don_vi }}
+                        </label>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">Chưa có đơn vị nào.</div>
+            {% endif %}
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/rules" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var scopeSelect = document.getElementById("apply_scope");
+    var unitBox = document.getElementById("unit-box");
+    var form = document.getElementById("rule-form");
+
+    function toggleUnitBox() {
+        if (!scopeSelect || !unitBox) return;
+        unitBox.style.display = scopeSelect.value === "UNIT" ? "block" : "none";
+    }
+
+    function validateBeforeSubmit(event) {
+        if (!scopeSelect) return true;
+
+        if (scopeSelect.value === "UNIT") {
+            var checkedUnits = form.querySelectorAll('input[name="unit_ids"]:checked');
+            if (!checkedUnits.length) {
+                event.preventDefault();
+                alert("Vui lòng chọn ít nhất 1 đơn vị áp dụng.");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if (scopeSelect) {
+        scopeSelect.addEventListener("change", toggleUnitBox);
+        toggleUnitBox();
+    }
+
+    if (form) {
+        form.addEventListener("submit", validateBeforeSubmit);
+    }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa hệ thống{% else %}Thêm hệ thống{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa hệ thống{% else %}Thêm hệ thống{% endif %}</h1>
+    <div class="page-subtitle">Khai báo thông tin hệ thống dùng để phân loại đơn vị và nguồn dữ liệu.</div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Thông tin hệ thống</h2>
+
+    <form method="POST">
+        <label>Tên hệ thống</label>
+        <input type="text" name="ten_he_thong" required value="{{ item.ten_he_thong if item else '' }}" placeholder="L2">
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/systems" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -153,7 +153,7 @@ def list_rules():
         rule_unit_map[rule.id] = [ru.don_vi for ru in getattr(rule, "rule_units", []) if ru.don_vi]
 
     return render_template(
-        "rules.html",
+        "rule/rule_design/rules.html",
         rules=rules,
         keyword=keyword,
         status=status,
@@ -218,7 +218,7 @@ def create_rule():
             error = str(e)
 
     return render_template(
-        "rule_form.html",
+        "rule/rule_design/rule_form.html",
         item=None,
         bo_rules=bo_rules,
         units=units,
@@ -279,7 +279,7 @@ def edit_rule(rule_id):
     selected_unit_ids = [str(ru.don_vi_id) for ru in getattr(item, "rule_units", [])]
 
     return render_template(
-        "rule_form.html",
+        "rule/rule_design/rule_form.html",
         item=item,
         bo_rules=bo_rules,
         units=units,
@@ -345,7 +345,7 @@ def list_rule_details(rule_id):
     applied_units = [ru.don_vi for ru in getattr(rule, "rule_units", []) if ru.don_vi]
 
     return render_template(
-        "rule_details.html",
+        "rule/rule_design/rule_details.html",
         rule=rule,
         details=details,
         grouped_details=grouped_details,
@@ -410,7 +410,7 @@ def create_rule_detail_group(rule_id, role):
             error = str(e)
 
     return render_template(
-        "rule_detail_form.html",
+        "rule/rule_design/rule_detail_form.html",
         rule=rule,
         item=None,
         role=role,
@@ -491,7 +491,7 @@ def edit_rule_detail_group(rule_id, role, group_no):
     initial_payload = build_initial_group_payload(group_details)
 
     return render_template(
-        "rule_detail_form.html",
+        "rule/rule_design/rule_detail_form.html",
         rule=rule,
         item=group_details,
         role=role,

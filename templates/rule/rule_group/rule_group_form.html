@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{% if item %}Sửa nhóm rule{% else %}Tạo nhóm rule{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa nhóm rule{% else %}Tạo nhóm rule{% endif %}</h1>
+    <div class="page-subtitle">
+        Cấu hình nhóm cha/con để hiển thị rule trên cây.
+    </div>
+</div>
+
+<div class="card">
+    <div class="actions">
+        <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">← Về danh sách nhóm</a>
+        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">Về cây rule</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Thông tin nhóm rule</div>
+
+    {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" class="grid">
+        <div class="col-6">
+            <label>Tên nhóm</label>
+            <input type="text" name="ten_nhom" value="{{ item.ten_nhom if item else '' }}" required>
+        </div>
+
+        <div class="col-6">
+            <label>Nhóm cha</label>
+            <select name="parent_id">
+                <option value="">-- Nhóm gốc --</option>
+                {% for g in groups %}
+                    <option value="{{ g.id }}"
+                        {% if item and item.parent_id == g.id %}selected{% endif %}>
+                        {{ g.ten_nhom }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-3">
+            <label>Thứ tự</label>
+            <input type="number" name="sort_order" value="{{ item.sort_order if item else 1 }}">
+        </div>
+
+        <div class="col-12">
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Lưu</button>
+                <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-secondary">Hủy</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

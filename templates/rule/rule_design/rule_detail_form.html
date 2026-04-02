@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa nhóm {{ role }}{% else %}Tạo {{ role }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        {% if item %}
+        Sửa nhóm {{ role }}
+        {% else %}
+        Tạo {{ role }}
+        {% endif %}
+    </h1>
+    <div class="page-subtitle">
+        Rule: {{ rule.ten_rule }}
+        {% if group_no %}
+        | Nhóm logic {{ group_no }}
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    {% if error %}
+    <div class="alert alert-error" style="margin-bottom: 15px;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div
+        style="margin-bottom: 18px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+        <div style="font-weight: 700; margin-bottom: 6px;">
+            {% if role == 'TRIGGER' %}
+            Nhóm Trigger
+            {% else %}
+            Nhóm Validate
+            {% endif %}
+        </div>
+        <div style="font-size: 14px; color: #374151;">
+            Các điều kiện trong nhóm này sẽ nối với nhau bằng <strong>AND</strong>.
+        </div>
+        <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
+            {% if role == 'TRIGGER' %}
+            Giữa các nhóm trigger khác nhau là OR.
+            {% else %}
+            Giữa các nhóm validate khác nhau là OR.
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="POST" id="group-rule-detail-form">
+        <input type="hidden" name="group_payload" id="group_payload">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+            <div>
+                <div style="font-weight:700;">
+                    {% if role == 'TRIGGER' %}Danh sách trigger trong nhóm{% else %}Danh sách validate trong nhóm{%
+                    endif %}
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn_add_condition">+ Thêm điều kiện AND</button>
+        </div>
+
+        <div id="conditions_container"></div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">
+                {% if item %}Lưu nhóm{% else %}Tạo nhóm{% endif %}
+            </button>
+            <a href="/rules/{{ rule.id }}/details" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+
+    <template id="condition-card-template">
+        <div class="condition-card"
+            style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; margin-bottom:12px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+                <div class="condition-title" style="font-weight:700;">Điều kiện</div>
+                <button type="button" class="btn btn-danger btn-remove-condition">Xóa</button>
+            </div>
+
+            <div class="grid">
+                <div class="col-6">
+                    <label>XML nguồn</label>
+                    <select class="input-xml">
+                        <option value="">-- Chọn XML --</option>
+                        {% for x in xmls %}
+                        <option value="{{ x.id }}" data-item-type="{{ x.item_type if x.item_type else 'MULTI' }}">
+                            {{ x.ma_xml }} - {{ x.ten_xml }} ({{ x.item_type if x.item_type else 'MULTI' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-6">
+                    <label>Field nguồn</label>
+                    <select class="input-field">
+                        <option value="">-- Chọn field --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-6">
+                    <label>Kiểu so sánh</label>
+                    <select class="input-compare-mode">
+                        <option value="VALUE">So sánh với giá trị cố định</option>
+                        <option value="FIELD">So sánh với field khác</option>
+                        <option value="CATEGORY">So sánh với danh mục</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label>Condition</label>
+                    <select class="input-condition">
+                        <option value="">-- Chọn điều kiện --</option>
+                        {% for c in conditions %}
+                        <option value="{{ c.id }}" data-code="{{ c.ma_dieu_kien }}">{{ c.ma_dieu_kien }} - {{
+                            c.ten_dieu_kien }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="value-mode-box">
+                <div class="grid">
+                    <div class="col-12">
+                        <label class="value-label">Giá trị so sánh</label>
+                        <input type="text" class="input-gia-tri" placeholder="Ví dụ: 7,8 hoặc 18-06">
+                        <div class="hint-value" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-mode-box" style="display:none;">
+                <div class="grid">
+                    <div class="col-6">
+                        <label>XML so sánh</label>
+                        <select class="input-compare-xml">
+                            <option value="">-- Chọn XML so sánh --</option>
+                            {% for x in xmls %}
+                            <option value="{{ x.id }}" data-item-type="{{ x.item_type if x.item_type else 'MULTI' }}">
+                                {{ x.ma_xml }} - {{ x.ten_xml }} ({{ x.item_type if x.item_type else 'MULTI' }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-6">
+                        <label>Field so sánh</label>
+                        <select class="input-compare-field">
+                            <option value="">-- Chọn field so sánh --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field-extra-value-box" style="display:none; margin-top:12px;">
+                    <div class="grid">
+                        <div class="col-12">
+                            <label class="field-extra-value-label">Số phút</label>
+                            <input type="text" class="input-gia-tri-field-mode" placeholder="Ví dụ: 15">
+                            <div class="hint-field-extra-value" style="margin-top:6px; font-size:12px; color:#6b7280;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hint-field-compare" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
+            </div>
+
+            <div class="category-mode-box" style="display:none;">
+                <div class="grid">
+                    <div class="col-6">
+                        <label>Danh mục</label>
+                        <select class="input-compare-category">
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6">
+                        <label>Field danh mục</label>
+                        <select class="input-compare-category-field">
+                            <option value="">-- Chọn field danh mục --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-12">
+                    <label>Date part (nếu field là DATE)</label>
+                    <select class="input-date-part">
+                        <option value="">-- Không dùng --</option>
+                        <option value="HOUR">Giờ</option>
+                        <option value="DAY">Ngày</option>
+                        <option value="MONTH">Tháng</option>
+                        <option value="YEAR">Năm</option>
+                        <option value="DAY_OF_WEEK">Thứ trong tuần</option>
+                    </select>
+                    <div class="hint-date-part" style="margin-top:6px; font-size:12px; color:#6b7280;"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        (function () {
+            const role = {{ role| tojson
+        }};
+        const initialPayload = {{ initial_payload| safe }};
+        const conditionsContainer = document.getElementById("conditions_container");
+        const template = document.getElementById("condition-card-template");
+        const form = document.getElementById("group-rule-detail-form");
+        const payloadInput = document.getElementById("group_payload");
+        const btnAddCondition = document.getElementById("btn_add_condition");
+
+        let conditionCounter = 0;
+        let cachedCategories = null;
+        const CONDITION_GROUPS = {
+            COMMON: ["IS_NULL", "NOT_NULL"],
+
+            TEXT: [
+                "EQUAL", "NOT_EQUAL",
+                "CONTAINS", "NOT_CONTAINS",
+                "IN_LIST", "NOT_IN_LIST"
+            ],
+
+            NUMBER: [
+                "EQUAL", "NOT_EQUAL",
+                "BETWEEN", "NOT_BETWEEN",
+                "IN_LIST", "NOT_IN_LIST"
+            ],
+            NUMBER_DIFF: [
+                "EQUAL", "NOT_EQUAL",
+                "IN_LIST", "NOT_IN_LIST"
+            ],
+
+            DATE_BASIC: [
+                "EQUAL", "NOT_EQUAL",
+                "BETWEEN", "NOT_BETWEEN"
+            ],
+
+            DATE_DIFF: [
+                "DATETIME_NOT_GT_MINUTES",
+                "DATETIME_GT_MINUTES",
+                "DATETIME_BETWEEN_MINUTES",
+                "DATETIME_NOT_BETWEEN_MINUTES"
+            ]
+        };
+        function getFieldType(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            return opt ? (opt.dataset.type || "STRING").toUpperCase() : "STRING";
+        }
+        function getConditionCode(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            return opt ? (opt.dataset.code || "").trim().toUpperCase() : "";
+        }
+        function filterConditionOptions(conditionSelect, fieldType, compareMode) {
+            let allowed = [...CONDITION_GROUPS.COMMON];
+
+            if (fieldType === "STRING") {
+                allowed = allowed.concat(CONDITION_GROUPS.TEXT);
+            }
+
+            if (fieldType === "NUMBER") {
+                allowed = allowed.concat(CONDITION_GROUPS.NUMBER);
+
+                if (compareMode === "FIELD") {
+                    allowed = CONDITION_GROUPS.NUMBER_DIFF;
+                }
+            }
+
+            if (fieldType === "DATE") {
+                allowed = allowed.concat(CONDITION_GROUPS.DATE_BASIC);
+
+                if (compareMode === "FIELD" || compareMode === "CATEGORY") {
+                    allowed = CONDITION_GROUPS.DATE_DIFF;
+                }
+            }
+
+            if(compareMode == "CATEGORY"){
+                allowed = allowed.filter(item => !["IS_NULL", "NOT_NULL", "EQUAL", "NOT_EQUAL", "CONTAINS", "NOT_CONTAINS"].includes(item));
+            }
+
+            Array.from(conditionSelect.options).forEach(opt => {
+                if (!opt.value) return;
+
+                const code = (opt.dataset.code || "").toUpperCase();
+
+                if (allowed.includes(code)) {
+                    opt.style.display = "block";
+                } else {
+                    opt.style.display = "none";
+                }
+            });
+
+            const currentCode = getConditionCode(conditionSelect);
+            if (!allowed.includes(currentCode)) {
+                conditionSelect.value = "";
+            }
+        }
+
+        function isRangeCondition(code) {
+            return code === "BETWEEN" || code === "NOT_BETWEEN";
+        }
+
+        function isFieldMinutesOffsetCondition(code) {
+            return [
+                "DATETIME_NOT_GT_MINUTES",
+                "DATETIME_GT_MINUTES",
+                "DATETIME_BETWEEN_MINUTES",
+                "DATETIME_NOT_BETWEEN_MINUTES"
+            ].includes(code);
+        }
+
+        function getSelectedItemType(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            return opt ? (opt.dataset.itemType || "MULTI").trim().toUpperCase() : "MULTI";
+        }
+
+        async function loadFieldsByXml(xmlId, targetSelect, selectedValue) {
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            if (!xmlId) {
+                targetSelect.innerHTML = '<option value="">-- Chọn field --</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/rules/api/fields-by-xml?xml_id=' + encodeURIComponent(xmlId));
+                const data = await response.json();
+
+                targetSelect.innerHTML = '<option value="">-- Chọn field --</option>';
+                data.forEach(function (f) {
+                    const opt = document.createElement("option");
+                    opt.value = f.id;
+                    opt.textContent = f.ten_truong + ' | ' + f.xml_path + ' (' + (f.data_type || 'STRING') + ')';
+                    opt.dataset.type = f.data_type || "STRING";
+                    if (String(selectedValue || "") === String(f.id)) {
+                        opt.selected = true;
+                    }
+                    targetSelect.appendChild(opt);
+                });
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải field --</option>';
+            }
+        }
+
+        async function ensureCategoriesLoaded() {
+            if (cachedCategories) {
+                return cachedCategories;
+            }
+
+            const response = await fetch('/rules/api/categories');
+            cachedCategories = await response.json();
+            return cachedCategories;
+        }
+
+        async function loadCategories(targetSelect, selectedValue) {
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            try {
+                const items = await ensureCategoriesLoaded();
+                targetSelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+
+                items.forEach(function (item) {
+                    const opt = document.createElement("option");
+                    opt.value = item.id;
+                    opt.textContent = item.label || item.ten_danh_muc;
+                    if (String(selectedValue || "") === String(item.id)) {
+                        opt.selected = true;
+                    }
+                    targetSelect.appendChild(opt);
+                });
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải danh mục --</option>';
+            }
+        }
+
+        async function loadCategoryFields(categoryId, targetSelect, selectedValue) {
+            targetSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+            if (!categoryId) {
+                targetSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/rules/api/category-fields?category_id=' + encodeURIComponent(categoryId));
+                const data = await response.json();
+
+                targetSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                data.forEach(function (f) {
+                    const opt = document.createElement("option");
+                    opt.value = f.id;
+                    opt.textContent = f.ma_truong;
+                    if (String(selectedValue || "") === String(f.id)) {
+                        opt.selected = true;
+                    }
+                    targetSelect.appendChild(opt);
+                });
+            } catch (err) {
+                targetSelect.innerHTML = '<option value="">-- Lỗi tải field danh mục --</option>';
+            }
+        }
+
+        function updateTitles() {
+            const cards = conditionsContainer.querySelectorAll(".condition-card");
+            cards.forEach(function (cardEl, idx) {
+                const titleEl = cardEl.querySelector(".condition-title");
+                titleEl.textContent = role + ' ' + (idx + 1);
+            });
+        }
+
+        function createConditionCard(prefill) {
+            conditionCounter += 1;
+
+            const node = template.content.firstElementChild.cloneNode(true);
+
+            const titleEl = node.querySelector(".condition-title");
+            const xmlSelect = node.querySelector(".input-xml");
+            const fieldSelect = node.querySelector(".input-field");
+            const conditionSelect = node.querySelector(".input-condition");
+            const compareModeSelect = node.querySelector(".input-compare-mode");
+            const giaTriInput = node.querySelector(".input-gia-tri");
+            const compareXmlSelect = node.querySelector(".input-compare-xml");
+            const compareFieldSelect = node.querySelector(".input-compare-field");
+            const compareCategorySelect = node.querySelector(".input-compare-category");
+            const compareCategoryFieldSelect = node.querySelector(".input-compare-category-field");
+            const datePartSelect = node.querySelector(".input-date-part");
+            const valueModeBox = node.querySelector(".value-mode-box");
+            const fieldModeBox = node.querySelector(".field-mode-box");
+            const categoryModeBox = node.querySelector(".category-mode-box");
+            const fieldExtraValueBox = node.querySelector(".field-extra-value-box");
+            const fieldExtraValueInput = node.querySelector(".input-gia-tri-field-mode");
+            const fieldExtraValueLabel = node.querySelector(".field-extra-value-label");
+            const hintFieldExtraValue = node.querySelector(".hint-field-extra-value");
+            const hintValue = node.querySelector(".hint-value");
+            const hintDatePart = node.querySelector(".hint-date-part");
+            const hintFieldCompare = node.querySelector(".hint-field-compare");
+            const removeBtn = node.querySelector(".btn-remove-condition");
+
+            titleEl.textContent = role + ' ' + conditionCounter;
+
+            function updateConditionByContext() {
+                const fieldType = getFieldType(fieldSelect);
+                const compareMode = compareModeSelect.value || "VALUE";
+
+                filterConditionOptions(conditionSelect, fieldType, compareMode);
+            }
+            function syncFieldModeValueToMainInput() {
+                giaTriInput.value = fieldExtraValueInput.value || "";
+            }
+
+            function syncMainInputToFieldModeValue() {
+                fieldExtraValueInput.value = giaTriInput.value || "";
+            }
+
+            function updateCompareMode() {
+                const mode = compareModeSelect.value || "VALUE";
+                const conditionCode = getConditionCode(conditionSelect);
+                const needFieldExtraValue = mode === "FIELD" && isFieldMinutesOffsetCondition(conditionCode);
+
+                valueModeBox.style.display = "none";
+                fieldModeBox.style.display = "none";
+                categoryModeBox.style.display = "none";
+                fieldExtraValueBox.style.display = "none";
+
+                if (mode === "FIELD") {
+                    fieldModeBox.style.display = "block";
+
+                    if (needFieldExtraValue) {
+                        fieldExtraValueBox.style.display = "block";
+                        syncMainInputToFieldModeValue();
+                    } else {
+                        giaTriInput.value = "";
+                        fieldExtraValueInput.value = "";
+                    }
+
+                    compareCategorySelect.value = "";
+                    compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                } else if (mode === "CATEGORY") {
+                    categoryModeBox.style.display = "block";
+                    giaTriInput.value = "";
+                    fieldExtraValueInput.value = "";
+                    compareXmlSelect.value = "";
+                    compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
+                } else {
+                    valueModeBox.style.display = "block";
+                    compareXmlSelect.value = "";
+                    compareFieldSelect.innerHTML = '<option value="">-- Chọn field so sánh --</option>';
+                    compareCategorySelect.value = "";
+                    compareCategoryFieldSelect.innerHTML = '<option value="">-- Chọn field danh mục --</option>';
+                }
+            }
+
+            xmlSelect.addEventListener("change", async function () {
+                await loadFieldsByXml(this.value, fieldSelect, "");
+                updateConditionByContext();
+            });
+
+            compareXmlSelect.addEventListener("change", function () {
+                loadFieldsByXml(this.value, compareFieldSelect, "");
+            });
+
+            compareCategorySelect.addEventListener("change", function () {
+                loadCategoryFields(this.value, compareCategoryFieldSelect, "");
+            });
+
+            compareModeSelect.addEventListener("change", function () {
+                updateCompareMode();
+                updateConditionByContext();
+            });
+
+            conditionSelect.addEventListener("change", function () {
+                updateCompareMode();
+            });
+            fieldSelect.addEventListener("change", updateConditionByContext);
+            fieldExtraValueInput.addEventListener("input", syncFieldModeValueToMainInput);
+
+            removeBtn.addEventListener("click", function () {
+                node.remove();
+                updateTitles();
+            });
+
+            node.getPayload = function () {
+                syncFieldModeValueToMainInput();
+
+                return {
+                    xml_id: xmlSelect.value || "",
+                    field_id: fieldSelect.value || "",
+                    condition_id: conditionSelect.value || "",
+                    compare_mode: compareModeSelect.value || "VALUE",
+                    compare_xml_id: compareXmlSelect.value || "",
+                    compare_field_id: compareFieldSelect.value || "",
+                    compare_category_id: compareCategorySelect.value || "",
+                    compare_category_field_id: compareCategoryFieldSelect.value || "",
+                    gia_tri: giaTriInput.value || "",
+                    date_part: datePartSelect.value || ""
+                };
+            };
+
+            async function applyPrefill() {
+                const data = prefill || {};
+
+                xmlSelect.value = data.xml_id || "";
+                await loadFieldsByXml(data.xml_id || "", fieldSelect, data.field_id || "");
+
+                conditionSelect.value = data.condition_id || "";
+                compareModeSelect.value = data.compare_mode || "VALUE";
+
+                await loadCategories(compareCategorySelect, data.compare_category_id || "");
+                updateCompareMode();
+
+                giaTriInput.value = data.gia_tri || "";
+                fieldExtraValueInput.value = data.gia_tri || "";
+
+                if ((data.compare_mode || "VALUE") === "FIELD") {
+                    compareXmlSelect.value = data.compare_xml_id || "";
+                    await loadFieldsByXml(data.compare_xml_id || "", compareFieldSelect, data.compare_field_id || "");
+                } else if ((data.compare_mode || "VALUE") === "CATEGORY") {
+                    await loadCategoryFields(data.compare_category_id || "", compareCategoryFieldSelect, data.compare_category_field_id || "");
+                }
+
+                datePartSelect.value = data.date_part || "";
+                updateCompareMode();
+                updateConditionByContext();
+            }
+
+            conditionsContainer.appendChild(node);
+            applyPrefill();
+            updateTitles();
+        }
+
+        btnAddCondition.addEventListener("click", function () {
+            createConditionCard({
+                compare_mode: "VALUE"
+            });
+        });
+
+        form.addEventListener("submit", function (e) {
+            const cards = conditionsContainer.querySelectorAll(".condition-card");
+            const payload = {
+                conditions: []
+            };
+
+            if (!cards.length) {
+                e.preventDefault();
+                alert("Phải có ít nhất 1 điều kiện.");
+                return;
+            }
+
+            for (let i = 0; i < cards.length; i++) {
+                const row = cards[i].getPayload();
+                const cardEl = cards[i];
+                const conditionSelect = cardEl.querySelector(".input-condition");
+                const conditionCode = getConditionCode(conditionSelect);
+
+                if (!row.field_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện chưa chọn field nguồn.");
+                    return;
+                }
+
+                if (!row.condition_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện chưa chọn condition.");
+                    return;
+                }
+
+                if (row.compare_mode === "FIELD" && !row.compare_field_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu FIELD nhưng chưa chọn field so sánh.");
+                    return;
+                }
+
+                if (row.compare_mode === "CATEGORY" && !row.compare_category_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu CATEGORY nhưng chưa chọn danh mục.");
+                    return;
+                }
+
+                if (row.compare_mode === "CATEGORY" && !row.compare_category_field_id) {
+                    e.preventDefault();
+                    alert("Có điều kiện kiểu CATEGORY nhưng chưa chọn field danh mục.");
+                    return;
+                }
+
+                if (row.compare_mode === "FIELD" && isFieldMinutesOffsetCondition(conditionCode)) {
+                    if (!String(row.gia_tri || "").trim()) {
+                        e.preventDefault();
+                        alert("Điều kiện DATETIME_NOT_GT_MINUTES phải nhập số phút cho phép.");
+                        return;
+                    }
+
+                    if (isNaN(Number(row.gia_tri))) {
+                        e.preventDefault();
+                        alert("Số phút cho phép phải là số.");
+                        return;
+                    }
+                }
+
+                payload.conditions.push(row);
+            }
+
+            payloadInput.value = JSON.stringify(payload);
+        });
+
+        if (initialPayload && initialPayload.conditions && initialPayload.conditions.length) {
+            initialPayload.conditions.forEach(function (row) {
+                createConditionCard(row);
+            });
+        } else {
+            createConditionCard({ compare_mode: "VALUE" });
+        }
+    }) ();
+    </script>
+</div>
+{% endblock %}

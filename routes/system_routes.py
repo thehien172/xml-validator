@@ -15,7 +15,7 @@ def list_systems():
         query = query.filter(HeThong.ten_he_thong.ilike(f"%{keyword}%"))
 
     items = query.order_by(HeThong.id.asc()).all()
-    return render_template("systems.html", items=items, keyword=keyword)
+    return render_template("unit/systems.html", items=items, keyword=keyword)
 
 
 @system_bp.route("/create", methods=["GET", "POST"])
@@ -28,7 +28,7 @@ def create_system():
         db.session.commit()
         return redirect(url_for("system_bp.list_systems"))
 
-    return render_template("system_form.html", item=None)
+    return render_template("unit/system_form.html", item=None)
 
 
 @system_bp.route("/<int:item_id>/edit", methods=["GET", "POST"])
@@ -40,7 +40,7 @@ def edit_system(item_id):
         db.session.commit()
         return redirect(url_for("system_bp.list_systems"))
 
-    return render_template("system_form.html", item=item)
+    return render_template("unit/system_form.html", item=item)
 
 
 @system_bp.route("/<int:item_id>/delete", methods=["POST"])
@@ -82,7 +82,7 @@ def list_units():
     systems = HeThong.query.order_by(HeThong.id.asc()).all()
 
     return render_template(
-        "units.html",
+        "unit/units.html",
         items=items,
         systems=systems,
         keyword=keyword,
@@ -108,7 +108,7 @@ def create_unit():
         db.session.commit()
         return redirect(url_for("unit_bp.list_units"))
 
-    return render_template("unit_form.html", item=None, systems=systems)
+    return render_template("unit/unit_form.html", item=None, systems=systems)
 
 
 @unit_bp.route("/<int:item_id>/edit", methods=["GET", "POST"])
@@ -127,7 +127,7 @@ def edit_unit(item_id):
         db.session.commit()
         return redirect(url_for("unit_bp.list_units"))
 
-    return render_template("unit_form.html", item=item, systems=systems)
+    return render_template("unit/unit_form.html", item=item, systems=systems)
 
 
 @unit_bp.route("/<int:item_id>/delete", methods=["POST"])

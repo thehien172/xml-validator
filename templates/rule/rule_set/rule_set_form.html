@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Sửa bộ rule{% else %}Thêm bộ rule{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{% if item %}Sửa bộ rule{% else %}Thêm bộ rule{% endif %}</h1>
+    <div class="page-subtitle">Khai báo bộ rule để nhóm các rule kiểm tra theo từng chuẩn nghiệp vụ.</div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Thông tin bộ rule</h2>
+
+    <form method="POST">
+        <label>Mã bộ rule</label>
+        <input type="text" name="ma_bo_rule" required value="{{ item.ma_bo_rule if item else '' }}" placeholder="4750">
+
+        <label>Tên bộ rule</label>
+        <input type="text" name="ten_bo_rule" required value="{{ item.ten_bo_rule if item else '' }}" placeholder="Bộ rule 4750">
+
+        <label>Mô tả</label>
+        <textarea name="mo_ta" placeholder="Mô tả ngắn về bộ rule">{{ item.mo_ta if item and item.mo_ta else '' }}</textarea>
+
+        <label>Trạng thái</label>
+        <select name="is_active">
+            <option value="1" {% if not item or item.is_active %}selected{% endif %}>Áp dụng</option>
+            <option value="0" {% if item and not item.is_active %}selected{% endif %}>Không áp dụng</option>
+        </select>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a href="/rule-sets" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

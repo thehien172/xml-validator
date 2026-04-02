@@ -21,7 +21,7 @@ def list_xmls():
         )
 
     xmls = query.order_by(DanhMucXml.id.asc()).all()
-    return render_template("xmls.html", xmls=xmls, keyword=keyword)
+    return render_template("xml/xmls.html", xmls=xmls, keyword=keyword)
 
 
 @xml_bp.route("/create", methods=["GET", "POST"])
@@ -37,7 +37,7 @@ def create_xml():
         db.session.commit()
         return redirect(url_for("xml_bp.list_xmls"))
 
-    return render_template("xml_form.html", item=None)
+    return render_template("xml/xml_form.html", item=None)
 
 
 @xml_bp.route("/<int:xml_id>/edit", methods=["GET", "POST"])
@@ -52,7 +52,7 @@ def edit_xml(xml_id):
         db.session.commit()
         return redirect(url_for("xml_bp.list_xmls"))
 
-    return render_template("xml_form.html", item=item)
+    return render_template("xml/xml_form.html", item=item)
 
 
 @xml_bp.route("/<int:xml_id>/delete", methods=["POST"])

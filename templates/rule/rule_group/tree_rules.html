@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% macro render_node(node) %}
+    {% if node.type == "group" %}
+        <li class="tree-group-item">
+            <details open>
+                <summary>
+                    <span class="tree-group-title">{{ node.group.ten_nhom }}</span>
+                    <span class="tree-count">{{ node.rule_count }} rule</span>
+                </summary>
+
+                {% if node.children %}
+                    <ul class="tree-children">
+                        {% for child in node.children %}
+                            {{ render_node(child) }}
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </details>
+        </li>
+    {% else %}
+        <li class="tree-rule-item">
+            <div class="tree-rule-card">
+                <div class="tree-rule-title">
+                    {{ node.rule.ten_rule }}
+                </div>
+            </div>
+        </li>
+    {% endif %}
+{% endmacro %}
+
+{% block title %}Cây rule hoạt động{% endblock %}
+
+{% block content %}
+<style>
+    .page-tools {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .tool-form {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+    }
+
+    .tool-form input[type="text"] {
+        max-width: 420px;
+    }
+
+    .tree-wrapper {
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        padding: 20px;
+    }
+
+    .tree-root,
+    .tree-children {
+        list-style: none;
+        margin: 0;
+        padding-left: 22px;
+    }
+
+    .tree-root {
+        padding-left: 0;
+    }
+
+    .tree-group-item,
+    .tree-rule-item {
+        margin: 8px 0;
+    }
+
+    .tree-group-item summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #f8fbff;
+        border: 1px solid #dbeafe;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+    }
+
+    .tree-group-item summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .tree-group-title {
+        color: #0f172a;
+    }
+
+    .tree-group-code {
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .tree-count {
+        margin-left: auto;
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .tree-rule-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-left: 4px solid #2563eb;
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .tree-rule-title {
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 6px;
+    }
+
+    .tree-rule-meta {
+        color: #475569;
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .tree-rule-message {
+        color: #374151;
+        font-size: 14px;
+    }
+</style>
+
+<div class="page-header">
+    <h1 class="page-title">Cây rule hoạt động</h1>
+    <div class="page-subtitle">
+        Chỉ hiển thị các rule đang hoạt động và thuộc bộ rule đang hoạt động.
+    </div>
+</div>
+
+<div class="page-tools">
+    <form method="get" class="tool-form">
+        <input type="text" name="keyword" value="{{ keyword }}" placeholder="Tìm theo tên rule, thông báo, nhóm, bộ rule...">
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+        <a href="{{ url_for('rule_group_bp.tree_view') }}" class="btn btn-secondary">Xóa lọc</a>
+        <a href="{{ url_for('rule_bp.list_rules') }}" class="btn btn-primary">⚙️ Rules</a>
+        <a href="{{ url_for('rule_group_bp.list_groups') }}" class="btn btn-primary">⚙️ Rule groups</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-title">Tổng quan</div>
+    <div class="card-subtitle">Tổng số rule đang hiển thị trong cây: <strong>{{ total_rules }}</strong></div>
+</div>
+
+<div class="tree-wrapper">
+    {% if tree_nodes %}
+        <ul class="tree-root">
+            {% for node in tree_nodes %}
+                {{ render_node(node) }}
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-state">
+            Không có rule hoạt động nào đã được gán nhóm để hiển thị trên cây.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

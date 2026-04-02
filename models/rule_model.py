@@ -28,6 +28,8 @@ class Rule(db.Model):
     run_scope = db.Column(db.String(20), nullable=False, default="ONE_HOSO")
 
     bo_rule = db.relationship("BoRule", backref="rules")
+    rule_group_id = db.Column(db.Integer, db.ForeignKey("rule_group.id"), nullable=True)
+    rule_group = db.relationship("RuleGroup", backref="rules")
 
     def __repr__(self):
         return f"<Rule {self.ten_rule}>"
@@ -90,3 +92,15 @@ class RuleDetail(db.Model):
 
     def __repr__(self):
         return f"<RuleDetail rule_id={self.rule_id} field_id={self.field_id}>"
+    
+class RuleGroup(db.Model):
+    __tablename__ = "rule_group"
+
+    id = db.Column(db.Integer, primary_key=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey("rule_group.id"), nullable=True)
+    ten_nhom = db.Column(db.String(255), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=1)
+    parent = db.relationship("RuleGroup", remote_side=[id], backref="children")
+
+    def __repr__(self):
+        return f"<RuleGroup {self.ten_nhom}>"

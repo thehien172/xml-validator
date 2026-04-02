@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Danh mục{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Danh mục</h1>
+    <div class="page-subtitle">Quản lý theo phân cấp: Danh mục chung và Danh mục riêng theo đơn vị.</div>
+</div>
+
+<div class="card">
+    <form method="GET">
+        <div class="grid">
+            <div class="col-6">
+                <label>Từ khóa</label>
+                <input type="text" name="keyword" value="{{ keyword }}" placeholder="Tên danh mục...">
+            </div>
+
+            <div class="col-6">
+                <label>Phạm vi</label>
+                <select name="scope">
+                    <option value="">-- Tất cả --</option>
+                    <option value="COMMON" {% if scope == 'COMMON' %}selected{% endif %}>Danh mục chung</option>
+                    <option value="UNIT" {% if scope == 'UNIT' %}selected{% endif %}>Danh mục riêng</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Tìm</button>
+            <a href="/categories" class="btn btn-secondary">Xóa lọc</a>
+            <a href="/categories/create" class="btn btn-primary">+ Tạo danh mục</a>
+        </div>
+    </form>
+</div>
+
+{% set common_items = items | selectattr('scope', 'equalto', 'COMMON') | list %}
+{% set unit_items = items | selectattr('scope', 'equalto', 'UNIT') | list %}
+
+<div class="category-group">
+    <div class="card">
+        <div class="group-header">
+            <div>
+                <h2 class="card-title" style="margin-bottom: 4px;">Danh mục chung</h2>
+            </div>
+            <div class="group-summary">{{ common_items|length }} danh mục</div>
+        </div>
+
+        {% if common_items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:80px;">STT</th>
+                        <th>Tên danh mục</th>
+                        <th style="width:180px;">Số field</th>
+                        <th style="width:180px;">Số bộ dữ liệu</th>
+                        <th style="width:360px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in common_items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <strong>{{ item.ten_danh_muc }}</strong>
+                        </td>
+                        <td>{{ item.fields|length }}</td>
+                        <td>{{ item.datasets|length }}</td>
+                        <td>
+                            <div class="actions actions-center">
+                                <a class="btn btn-secondary" href="/categories/{{ item.id }}/edit">Sửa</a>
+                                <a class="btn btn-primary" href="/categories/{{ item.id }}/fields">Field</a>
+                                <a class="btn btn-primary" href="/categories/{{ item.id }}/records">Dữ liệu</a>
+                                <form class="inline" method="POST" action="/categories/{{ item.id }}/delete" onsubmit="return confirm('Xóa danh mục này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">Chưa có danh mục chung nào.</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="group-header">
+            <div>
+                <h2 class="card-title" style="margin-bottom: 4px;">Danh mục theo đơn vị</h2>
+            </div>
+            <div class="group-summary">{{ unit_items|length }} danh mục</div>
+        </div>
+
+        {% if unit_items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:80px;">STT</th>
+                        <th>Tên danh mục</th>
+                        <th style="width:180px;">Số field</th>
+                        <th style="width:180px;">Số bộ dữ liệu</th>
+                        <th style="width:360px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in unit_items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ item.ten_danh_muc }}</strong></td>
+                        <td>{{ item.fields|length }}</td>
+                        <td>{{ item.datasets|length }}</td>
+                        <td>
+                            <div class="actions actions-center">
+                                <a class="btn btn-secondary" href="/categories/{{ item.id }}/edit">Sửa</a>
+                                <a class="btn btn-primary" href="/categories/{{ item.id }}/fields">Field</a>
+                                <a class="btn btn-primary" href="/categories/{{ item.id }}/datasets">Dữ liệu</a>
+                                <form class="inline" method="POST" action="/categories/{{ item.id }}/delete" onsubmit="return confirm('Xóa danh mục này?');">
+                                    <button class="btn btn-danger" type="submit">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">Chưa có danh mục riêng nào.</div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.group-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.group-summary {
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    font-size: 13px;
+}
+</style>
+{% endblock %}
