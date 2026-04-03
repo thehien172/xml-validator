@@ -208,6 +208,41 @@ def build_datetime_compare_text(detail):
 def check_condition(actual_value, condition_code, expected_value=None):
     actual_value = normalize_value(actual_value)
 
+    if condition_code in ("LENGTH_EQ", "LENGTH_GT", "LENGTH_LT", "LENGTH_BETWEEN", "LENGTH_NOT_BETWEEN"):
+        length = len(actual_value) if actual_value else 0
+
+        if condition_code == "LENGTH_EQ":
+            num = try_parse_number(expected_value)
+            return length == num if num is not None else False
+        
+        if condition_code == "LENGTH_GT":
+            num = try_parse_number(expected_value)
+            return length > num if num is not None else False
+
+        if condition_code == "LENGTH_LT":
+            num = try_parse_number(expected_value)
+            return length < num if num is not None else False
+
+        if condition_code == "LENGTH_BETWEEN":
+            start_raw, end_raw = split_range_value(expected_value)
+            start = try_parse_number(start_raw)
+            end = try_parse_number(end_raw)
+
+            if start is None or end is None:
+                return False
+
+            return start <= length <= end
+
+        if condition_code == "LENGTH_NOT_BETWEEN":
+            start_raw, end_raw = split_range_value(expected_value)
+            start = try_parse_number(start_raw)
+            end = try_parse_number(end_raw)
+
+            if start is None or end is None:
+                return False
+
+            return not (start <= length <= end)
+        
     if isinstance(expected_value, list):
         expected_list = normalize_list(expected_value)
 

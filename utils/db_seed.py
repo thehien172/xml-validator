@@ -231,6 +231,12 @@ def seed_conditions():
     add_condition_if_not_exists("NOT_IN_LIST", "Không nằm trong danh sách")
     add_condition_if_not_exists("BETWEEN", "Nằm trong khoảng")
     add_condition_if_not_exists("NOT_BETWEEN", "Không nằm trong khoảng")
+    add_condition_if_not_exists("LENGTH_EQ", "Độ dài bằng")
+    add_condition_if_not_exists("LENGTH_GT", "Độ dài lớn hơn")
+    add_condition_if_not_exists("LENGTH_LT", "Độ dài nhỏ hơn")
+    add_condition_if_not_exists("LENGTH_BETWEEN", "Độ dài nằm trong khoảng")
+    add_condition_if_not_exists("LENGTH_NOT_BETWEEN", "Độ dài không nằm trong khoảng")
+
     db.session.commit()
 
 

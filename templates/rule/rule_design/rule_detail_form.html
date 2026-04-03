@@ -219,7 +219,10 @@
             TEXT: [
                 "EQUAL", "NOT_EQUAL",
                 "CONTAINS", "NOT_CONTAINS",
-                "IN_LIST", "NOT_IN_LIST"
+                "IN_LIST", "NOT_IN_LIST",
+                "LENGTH_EQ",
+                "LENGTH_GT", "LENGTH_LT",
+                "LENGTH_BETWEEN", "LENGTH_NOT_BETWEEN"
             ],
 
             NUMBER: [
@@ -521,8 +524,6 @@
             });
 
             node.getPayload = function () {
-                syncFieldModeValueToMainInput();
-
                 return {
                     xml_id: xmlSelect.value || "",
                     field_id: fieldSelect.value || "",
